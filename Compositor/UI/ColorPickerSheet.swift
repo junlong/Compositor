@@ -4,8 +4,9 @@ import AppKit
 /// Photoshop-style picker: saturation/brightness field, vertical hue strip,
 /// new/current preview, RGB and hex entry. Lives in a movable floating panel so
 /// the canvas stays visible and can be clicked to sample a color.
+@MainActor
 struct ColorPickerSheet: View {
-    @Bindable var state: ColorPickerState
+    @ObservedObject var state: ColorPickerState
     let finish: (Bool) -> Void
     @State private var hexDraft = ""
     @FocusState private var hexFocused: Bool
@@ -45,8 +46,8 @@ struct ColorPickerSheet: View {
         .padding(20)
         .fixedSize()
         .onAppear { hexDraft = color.hex }
-        .onChange(of: color) { _, new in if !hexFocused { hexDraft = new.hex } }
-        .onChange(of: hexFocused) { _, focused in if !focused { commitHex() } }
+        .compatOnChange(of: color) { _, new in if !hexFocused { hexDraft = new.hex } }
+        .compatOnChange(of: hexFocused) { _, focused in if !focused { commitHex() } }
     }
 
     private var saturationBrightnessField: some View {
@@ -105,11 +106,11 @@ struct ColorPickerSheet: View {
     }
 
     private var fields: some View {
-        Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 6) {
+        VStack(alignment: .leading, spacing: 6) {
             channelRow("R", \.red)
             channelRow("G", \.green)
             channelRow("B", \.blue)
-            GridRow {
+            HStack(spacing: 8) {
                 Text("#").frame(width: 14, alignment: .leading)
                 TextField("Hex", text: $hexDraft)
                     .font(.system(.body, design: .monospaced))
@@ -129,7 +130,7 @@ struct ColorPickerSheet: View {
                 rgb[keyPath: channel] = CGFloat(min(255, max(0, newValue))) / 255
                 hsb.setRGB(rgb)
             })
-        return GridRow {
+        return HStack(spacing: 8) {
             Text(label).frame(width: 14, alignment: .leading)
                 .scrubbable(sensitivity: 1, value: channelValue, range: 0...255)
             TextField(label, value: channelValue, format: .number)
@@ -167,6 +168,7 @@ extension PaletteColor {
 
 /// Hosts the picker in the shared floating panel: first opened centered on the canvas,
 /// afterwards wherever it was last left. Closing it with the title-bar button cancels.
+@MainActor
 final class ColorPickerPanelController: NSObject {
     static let identifier = NSUserInterfaceItemIdentifier("colorPickerPanel")
     private let panel = FloatingPanelController(name: "colorPickerPanel")
@@ -191,10 +193,11 @@ final class ColorPickerPanelController: NSObject {
 
 /// A dialog's color swatch, drawn as the brush's: clicking it opens the app's picker on `color`, which follows the
 /// working color as it moves and keeps the one chosen. `closePicker()` puts the picker away with the dialog.
+@MainActor
 struct DialogColorSwatch: View {
     let title: String
     @Binding var color: PaletteColor
-    let session: EditorSession
+    @ObservedObject var session: EditorSession
     var body: some View {
         Button {
             session.openDialogColorPicker(title: title, color: color) { color = $0 }
@@ -208,7 +211,7 @@ struct DialogColorSwatch: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
-        .onChange(of: session.colorPicker?.color) { _, _ in session.previewDialogColor() }
+        .compatOnChange(of: session.colorPicker?.color) { _, _ in session.previewDialogColor() }
         .onDisappear { Self.closePicker(session) }
     }
     static func closePicker(_ session: EditorSession) {

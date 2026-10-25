@@ -1,14 +1,15 @@
 import AppKit
-import Observation
+import Combine
 
 /// The modifier keys held down right now, for controls that show what a held key temporarily changes, as
 /// Photoshop's options bar does: Command flips Auto Select, Shift flips the aspect-ratio lock.
 /// Keys held while typing in a text field don't count — ⌘A there shouldn't flicker the options bar.
-@MainActor @Observable final class HeldModifiers {
+@MainActor
+final class HeldModifiers: ObservableObject {
     static let shared = HeldModifiers()
-    private(set) var flags: NSEvent.ModifierFlags = []
-    @ObservationIgnored private var monitor: Any?
-    @ObservationIgnored private var observers: [NSObjectProtocol] = []
+    @Published private(set) var flags: NSEvent.ModifierFlags = []
+    private var monitor: Any?
+    private var observers: [NSObjectProtocol] = []
 
     private init() {
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown, .leftMouseDown, .leftMouseUp]) { event in

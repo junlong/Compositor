@@ -5,7 +5,7 @@ import Sparkle
 /// same few lines and buttons as Sparkle's compact one, with what's new listed under them rather than in a web view.
 /// The feed gives what's new in the item's `<changes>`, plain text, a line a change. Not its `<description>`: older
 /// copies, on Sparkle's own alert, would show that in a large release-notes box.
-@MainActor final class UpdateDriver: NSObject, SPUUserDriver {
+final class UpdateDriver: NSObject, SPUUserDriver {
     private let standard = SPUStandardUserDriver(hostBundle: .main, delegate: nil)
     weak var updater: SPUUpdater?
 
@@ -38,7 +38,7 @@ import Sparkle
         alert.layout()
         Self.trimAccessory(alert)
         Self.alignIconWithTitle(alert)
-        NSApp.activate()
+        NSApp.activate(ignoringOtherApps: true)
         // After Sparkle's call returns, so its updater isn't held up inside a modal run loop.
         DispatchQueue.main.async { [weak self] in
             let response = alert.runModal()
@@ -136,7 +136,6 @@ import Sparkle
         let size = changes.isEmpty ? .zero : label.fittingSize
         let holder = NSView(frame: NSRect(x: 0, y: 0, width: 260, height: max(size.height, 300)))
         label.frame = NSRect(x: 0, y: holder.frame.height - size.height, width: size.width, height: size.height)
-        holder.clipsToBounds = false
         holder.addSubview(label)
         return holder
     }

@@ -172,7 +172,7 @@ final class TransformOverlay: NSView {
 
     /// `path` filled into a mask fine enough to fill quickly, averaged down to `step` screen pixels per document pixel,
     /// and traced along those pixels' edges. Any coverage counts, so thin parts stay outlined rather than vanishing.
-    private nonisolated static func traceOutline(_ path: CGPath, canvas: CGRect, step: CGFloat) -> CGPath? {
+    nonisolated private static func traceOutline(_ path: CGPath, canvas: CGRect, step: CGFloat) -> CGPath? {
         let region = path.boundingBoxOfPath.intersection(canvas).integral
         guard !region.isNull, region.width >= 1, region.height >= 1 else { return nil }
         // Filling costs about as much as the edges each output pixel has to sort through, so the mask is filled at no

@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 /// A user-placed alignment line. Horizontal guides sit at a document Y; vertical at a document X.
-nonisolated struct CanvasGuide: Codable, Equatable, Sendable, Hashable {
+struct CanvasGuide: Codable, Equatable, Sendable, Hashable {
     enum Axis: String, Codable, Sendable { case horizontal, vertical }
     var id: UUID
     var axis: Axis
@@ -73,16 +73,16 @@ struct GridAppearance: Equatable {
         /// Nil for Custom, which uses the appearance's own color.
         var color: PaletteColor? {
             switch self {
-            case .lightGray: PaletteColor(red: 0.7, green: 0.7, blue: 0.7)
-            case .lightBlue: PaletteColor(red: 0.29, green: 0.78, blue: 1)
-            case .lightRed: PaletteColor(red: 1, green: 0.4, blue: 0.4)
-            case .green: PaletteColor(red: 0.25, green: 0.8, blue: 0.25)
-            case .mediumBlue: PaletteColor(red: 0.2, green: 0.4, blue: 1)
-            case .yellow: PaletteColor(red: 1, green: 1, blue: 0)
-            case .magenta: PaletteColor(red: 1, green: 0, blue: 1)
-            case .cyan: PaletteColor(red: 0, green: 1, blue: 1)
-            case .black: .black
-            case .custom: nil
+            case .lightGray: return PaletteColor(red: 0.7, green: 0.7, blue: 0.7)
+            case .lightBlue: return PaletteColor(red: 0.29, green: 0.78, blue: 1)
+            case .lightRed: return PaletteColor(red: 1, green: 0.4, blue: 0.4)
+            case .green: return PaletteColor(red: 0.25, green: 0.8, blue: 0.25)
+            case .mediumBlue: return PaletteColor(red: 0.2, green: 0.4, blue: 1)
+            case .yellow: return PaletteColor(red: 1, green: 1, blue: 0)
+            case .magenta: return PaletteColor(red: 1, green: 0, blue: 1)
+            case .cyan: return PaletteColor(red: 0, green: 1, blue: 1)
+            case .black: return .black
+            case .custom: return nil
             }
         }
     }
@@ -95,9 +95,9 @@ struct GridAppearance: Equatable {
         /// On and off lengths in screen points; empty for a solid line.
         var dashes: [CGFloat] {
             switch self {
-            case .lines: []
-            case .dashedLines: [4, 3]
-            case .dots: [1, 2]
+            case .lines: return []
+            case .dashedLines: return [4, 3]
+            case .dots: return [1, 2]
             }
         }
     }

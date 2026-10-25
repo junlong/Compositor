@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// View > Grid Settings…: every change shows on the canvas at once through `preview`; Cancel puts back what was there.
+@MainActor
 struct GridSettingsSheet: View {
-    let session: EditorSession
+    @ObservedObject var session: EditorSession
     let preview: (LayoutGrid, GridAppearance) -> Void
     let finish: ((LayoutGrid, GridAppearance)?) -> Void
     @State private var spacing: Int
@@ -116,10 +117,10 @@ struct GridSettingsSheet: View {
             }
         }
         .textFieldStyle(.roundedBorder).padding(24).frame(width: 360)
-        .onChange(of: appearance) { preview(grid, appearance) }
+        .onChange(of: appearance) { _ in preview(grid, appearance) }
         // Choosing a preset from the menu ends a pick that started from another.
-        .onChange(of: appearance.preset) { _, preset in if preset != .custom { pickedFrom = nil } }
-        .onChange(of: spacing) { if valid { preview(grid, appearance) } }
-        .onChange(of: subdivisions) { if valid { preview(grid, appearance) } }
+        .compatOnChange(of: appearance.preset) { _, preset in if preset != .custom { pickedFrom = nil } }
+        .onChange(of: spacing) { _ in if valid { preview(grid, appearance) } }
+        .onChange(of: subdivisions) { _ in if valid { preview(grid, appearance) } }
     }
 }

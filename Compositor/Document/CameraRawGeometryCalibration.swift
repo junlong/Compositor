@@ -1,18 +1,18 @@
 import AppKit
 import CoreImage
 
-nonisolated enum CameraRawUprightMode: String, CaseIterable, Sendable {
+enum CameraRawUprightMode: String, CaseIterable, Sendable {
     case off = "Off"
     case guided = "Guided"
 }
 
-nonisolated enum CameraRawProjection: String, CaseIterable, Sendable {
+enum CameraRawProjection: String, CaseIterable, Sendable {
     case perspective = "Perspective"
     case rectilinear = "Rectilinear"
 }
 
 /// A guide line in normalized image coordinates, 0…1 from the lower-left of the pixel grid.
-nonisolated struct CameraRawGeometryGuide: Equatable, Sendable, Codable {
+struct CameraRawGeometryGuide: Equatable, Sendable, Codable {
     var startX: Double = 0
     var startY: Double = 0
     var endX: Double = 0
@@ -22,7 +22,7 @@ nonisolated struct CameraRawGeometryGuide: Equatable, Sendable, Codable {
     var end: CGPoint { CGPoint(x: endX, y: endY) }
 }
 
-nonisolated struct CameraRawGeometrySettings: Equatable, Sendable {
+struct CameraRawGeometrySettings: Equatable, Sendable {
     var upright: CameraRawUprightMode = .off
     var projection: CameraRawProjection = .perspective
     var vertical: Double = 0
@@ -172,7 +172,7 @@ nonisolated struct CameraRawGeometrySettings: Equatable, Sendable {
     }
 }
 
-nonisolated enum CameraRawProcessVersion: String, CaseIterable, Sendable {
+enum CameraRawProcessVersion: String, CaseIterable, Sendable {
     case version1 = "Version 1"
     case version2 = "Version 2"
     case version3 = "Version 3"
@@ -209,7 +209,7 @@ nonisolated enum CameraRawProcessVersion: String, CaseIterable, Sendable {
     }
 }
 
-nonisolated struct CameraRawCalibrationSettings: Equatable, Sendable {
+struct CameraRawCalibrationSettings: Equatable, Sendable {
     var process: CameraRawProcessVersion = .version6
     var shadowTint: Double = 0
     var redHue: Double = 0
@@ -241,7 +241,7 @@ nonisolated struct CameraRawCalibrationSettings: Equatable, Sendable {
     func applying(shows: Bool) -> Self { shows ? self : Self() }
 }
 
-nonisolated extension CameraRawSettings {
+extension CameraRawSettings {
     func applyCalibration(pixels: UnsafeMutablePointer<UInt8>, width: Int, height: Int, stride: Int) {
         let calibration = calibration.normalized
         guard calibration.adjusts else { return }

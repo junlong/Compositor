@@ -6,7 +6,7 @@ import Foundation
 ///
 /// Tests get the compiled defaults instead, so one test flipping a switch can't reach another —
 /// or the app the person is actually using.
-nonisolated enum ToolDefaults {
+enum ToolDefaults {
     private static let prefix = "tool."
     private static let isTesting = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
 

@@ -10,7 +10,7 @@ import QuartzCore
 /// Everything is laid out in pixel coordinates with y pointing down, as the pixels sit in a texture: an image's top
 /// row is its row 0, and the frame's row 0 is the top of the view. Blending happens in sRGB, not linear light, as it
 /// does on the canvas and in Photoshop.
-@MainActor final class GPUCanvasRenderer {
+final class GPUCanvasRenderer {
     static let shared: GPUCanvasRenderer? = GPUCanvasRenderer()
 
     let device: MTLDevice
@@ -402,7 +402,7 @@ final class MetalCanvasView: NSView {
 }
 
 /// How one layer's pixels land in the frame.
-@MainActor struct GPUPlacement {
+struct GPUPlacement {
     /// Document pixels to frame pixels (y down).
     let mapping: CGAffineTransform
     /// Frame pixels per document pixel.
@@ -494,7 +494,7 @@ final class MetalCanvasView: NSView {
     }
 }
 
-nonisolated enum GPUBlend {
+enum GPUBlend {
     /// `top` composited over `bottom` in `mode`.
     static func blend(_ top: CIImage, over bottom: CIImage, mode: LayerBlendMode) -> CIImage {
         guard let name = filterName(mode) else { return top.composited(over: bottom) }
@@ -536,7 +536,7 @@ nonisolated enum GPUBlend {
     }
 }
 
-nonisolated enum GPUAdjustment {
+enum GPUAdjustment {
     /// `image` adjusted, laid out in frame pixels: `scale` frame pixels per document pixel, and `mapping` from document
     /// pixels to the frame (for Grain, whose pattern belongs to the document).
     /// `hdr`: the document has an HDR layer, so what's below may be brighter than white. Exposure then works on its full
@@ -668,7 +668,7 @@ nonisolated enum GPUAdjustment {
     /// Points per axis of the lookups for adjustments that change each color on its own, as Hue/Saturation's.
     static let dimension = 33
     private static let lock = NSLock()
-    nonisolated(unsafe) private static var cubes: [(adjustment: LayerAdjustment, data: Data)] = []
+    private static var cubes: [(adjustment: LayerAdjustment, data: Data)] = []
 
     /// A lookup for an adjustment that changes each color on its own, made by running the adjustment itself over every
     /// point of the lattice — so the GPU canvas shows what export makes, with nothing worked out twice.

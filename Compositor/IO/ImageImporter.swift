@@ -4,7 +4,7 @@ import CoreImage
 import ImageIO
 import UniformTypeIdentifiers
 
-nonisolated struct ImportedImage: @unchecked Sendable {
+struct ImportedImage: @unchecked Sendable {
     // Immutable CGImages can be shared with the main-thread renderer.
     let image: CGImage
     let thumbnail: CGImage
@@ -20,7 +20,7 @@ nonisolated struct ImportedImage: @unchecked Sendable {
     func file(for id: UUID) -> String { "\(id.uuidString).\(isHDR ? "exr" : "png")" }
 }
 
-nonisolated struct GIFTimelineFrame: Identifiable, @unchecked Sendable {
+struct GIFTimelineFrame: Identifiable, @unchecked Sendable {
     /// Editable timeline identity; inserted copies can refer to the same composed source frame.
     let index: Int
     let thumbnail: CGImage
@@ -28,7 +28,7 @@ nonisolated struct GIFTimelineFrame: Identifiable, @unchecked Sendable {
     var id: Int { index }
 }
 
-nonisolated enum GIFTimelineLimits {
+enum GIFTimelineLimits {
     static let maxFrames = 4_096
     // Reserve original source identities, with space for a full timeline of inserted copies.
     static let frameIdentityLimit = maxFrames * 2
@@ -39,7 +39,7 @@ nonisolated enum GIFTimelineLimits {
 }
 
 /// A folder brought in as images: the ones directly inside it, not its subfolders'.
-nonisolated enum ImageFolder {
+enum ImageFolder {
     /// A plain folder: not a file, and not a package such as a Compositor project.
     static func matches(_ url: URL) -> Bool {
         guard url.isFileURL, url.pathExtension.lowercased() != "comp",
@@ -60,15 +60,15 @@ nonisolated enum ImageFolder {
     }
 }
 
-nonisolated enum ImageImportError: LocalizedError {
+enum ImageImportError: LocalizedError {
     case unreadable, unsupported, tooLarge, tooManyFrames, locked
     var errorDescription: String? {
         switch self {
-        case .unreadable: "The image could not be read. It may be damaged or unavailable."
-        case .unsupported: "Choose a JPEG, PNG, GIF, HEIC, HEIF, TIFF, WebP, PDF, or Photoshop (PSD) file."
-        case .locked: "This PDF is password-protected. Save an unlocked copy, then import that."
-        case .tooLarge: "This import exceeds the current \(DocumentLimits.documentBudgetMegapixels)-megapixel document budget or \(DocumentLimits.maxSide.formatted())-pixel side limit."
-        case .tooManyFrames: "This animation has more than \(GIFTimelineLimits.maxFrames.formatted()) frames, which exceeds the current timeline limit."
+        case .unreadable: return "The image could not be read. It may be damaged or unavailable."
+        case .unsupported: return "Choose a JPEG, PNG, GIF, HEIC, HEIF, TIFF, WebP, PDF, or Photoshop (PSD) file."
+        case .locked: return "This PDF is password-protected. Save an unlocked copy, then import that."
+        case .tooLarge: return "This import exceeds the current \(DocumentLimits.documentBudgetMegapixels)-megapixel document budget or \(DocumentLimits.maxSide.formatted())-pixel side limit."
+        case .tooManyFrames: return "This animation has more than \(GIFTimelineLimits.maxFrames.formatted()) frames, which exceeds the current timeline limit."
         }
     }
 }
@@ -122,7 +122,7 @@ actor ImageImporter {
             guard let page = document.page(at: number) else { throw ImageImportError.unreadable }
             let box = page.getBoxRect(.cropBox)
             let size = abs(page.rotationAngle % 180) == 90 ? CGSize(width: box.height, height: box.width) : box.size
-            let scale = fitting.map { min($0.width / size.width, $0.height / size.height) } ?? Self.pdfResolution / 72
+            let scale: CGFloat = fitting.map { min($0.width / size.width, $0.height / size.height) } ?? CGFloat(Self.pdfResolution / 72)
             let width = Int((size.width * scale).rounded()), height = Int((size.height * scale).rounded())
             guard width >= 1, height >= 1, width <= DocumentLimits.maxSide, height <= DocumentLimits.maxSide,
                   width * height <= remaining else { throw ImageImportError.tooLarge }

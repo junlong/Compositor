@@ -2,7 +2,7 @@ import AppKit
 import CoreImage
 import Vision
 
-nonisolated struct ObjectSelectionSettings: Equatable, Sendable {
+struct ObjectSelectionSettings: Equatable, Sendable {
     /// Read the visible composite rather than just the active layer.
     var sampleAllLayers = true
     /// Positive values erode the detected mask inward; negative values expand it outward.
@@ -11,74 +11,88 @@ nonisolated struct ObjectSelectionSettings: Equatable, Sendable {
 
 /// Selects the foreground object under a clicked point using Vision's instance mask,
 /// then traces that mask into the document's normal path-based selection.
-nonisolated enum ObjectSelection {
+enum ObjectSelection {
     enum Failure: LocalizedError {
         case unsupported
         case render
 
         var errorDescription: String? {
             switch self {
-            case .unsupported: "Object Selection requires macOS 14 or later."
-            case .render: "The object mask could not be rendered."
+            case .unsupported: return "No object was found at that point."
+            case .render: return "The object mask could not be rendered."
             }
         }
     }
 
     /// The outline, in the image's top-left pixel coordinates, of the foreground object
     /// at `point`. Nil when the point is outside the image, on background, or no object is found.
+    ///
+    /// macOS 14's foreground-instance matting is unavailable here, so the object is the connected
+    /// region of Vision's saliency map that contains the clicked point. The panel's edge offset,
+    /// the edge-preserving upscale and the outline smoothing below work on it the same way.
     static func select(in image: CGImage, at point: CGPoint, edgeOffset: Int, smoothEdges: Bool) throws -> CGPath? {
         let width = image.width, height = image.height
         let x = Int(point.x.rounded(.down)), y = Int(point.y.rounded(.down))
         guard point.x.isFinite, point.y.isFinite, (0..<width).contains(x), (0..<height).contains(y) else { return nil }
-        guard #available(macOS 14.0, *) else { throw Failure.unsupported }
         return try selectAvailable(in: image, at: point, edgeOffset: edgeOffset, smoothEdges: smoothEdges)
     }
 
-    @available(macOS 14.0, *)
     private static func selectAvailable(in image: CGImage, at point: CGPoint, edgeOffset: Int, smoothEdges: Bool) throws -> CGPath? {
+        let width = image.width, height = image.height
         let handler = VNImageRequestHandler(cgImage: image, options: [:])
-        let request = VNGenerateForegroundInstanceMaskRequest()
+        let request = VNGenerateObjectnessBasedSaliencyImageRequest()
         try handler.perform([request])
-        guard let observation = request.results?.first else { return nil }
-        guard let instance = try instanceIndex(in: observation.instanceMask, at: point,
-                                               imageSize: CGSize(width: image.width, height: image.height)),
-              observation.allInstances.contains(instance) else { return nil }
-        let coarse = try observation.generateMask(forInstances: IndexSet(integer: instance))
-        let mask = adjusted(binaryMask: try edgePreservedBinaryMask(from: coarse, guide: image, width: image.width, height: image.height),
-                            width: image.width, height: image.height, edgeOffset: edgeOffset)
-        guard let outline = try MagicWand.outline(of: mask, width: image.width, height: image.height) else { return nil }
+        var observation = request.results?.first
+        if observation == nil {
+            let fallback = VNGenerateAttentionBasedSaliencyImageRequest()
+            try handler.perform([fallback])
+            observation = fallback.results?.first
+        }
+        guard let observation else { return nil }
+        let buffer = observation.pixelBuffer
+        let maskWidth = CVPixelBufferGetWidth(buffer), maskHeight = CVPixelBufferGetHeight(buffer)
+        guard maskWidth > 0, maskHeight > 0 else { return nil }
+        let saliency = try grayscaleBytes(from: buffer, width: maskWidth, height: maskHeight, interpolation: .none)
+        let seedX = min(maskWidth - 1, max(0, Int(point.x / CGFloat(width) * CGFloat(maskWidth))))
+        let seedY = min(maskHeight - 1, max(0, Int(point.y / CGFloat(height) * CGFloat(maskHeight))))
+        let seed = Int(saliency[seedY * maskWidth + seedX])
+        guard seed >= 20 else { return nil }
+        let threshold = UInt8(max(16, seed * 3 / 5))
+
+        // Grow the object's region from the click; saliency fades at its edges, so a threshold below the
+        // clicked value follows the outline instead of stopping at the exact pixel brightness.
+        var coarse = [UInt8](repeating: 0, count: maskWidth * maskHeight)
+        var visited = [Bool](repeating: false, count: maskWidth * maskHeight)
+        var stack = [seedY * maskWidth + seedX]
+        visited[seedY * maskWidth + seedX] = true
+        while let index = stack.popLast() {
+            coarse[index] = 255
+            let px = index % maskWidth, py = index / maskWidth
+            for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                let nx = px + dx, ny = py + dy
+                guard nx >= 0, ny >= 0, nx < maskWidth, ny < maskHeight else { continue }
+                let neighbor = ny * maskWidth + nx
+                guard !visited[neighbor], saliency[neighbor] >= threshold else { continue }
+                visited[neighbor] = true
+                stack.append(neighbor)
+            }
+        }
+
+        // Upsample the coarse mask to the image and pull it onto the image's edges.
+        guard let coarseImage = grayImage(coarse, width: maskWidth, height: maskHeight) else { return nil }
+        let upscaled = try grayscaleBytes(from: CIImage(cgImage: coarseImage),
+                                          width: width, height: height, interpolation: .high)
+        var mask: [UInt8] = upscaled.map { $0 >= 128 ? 255 : 0 }
+        mask = adjusted(binaryMask: mask, width: width, height: height, edgeOffset: edgeOffset)
+        guard let outline = try MagicWand.outline(of: mask, width: width, height: height) else { return nil }
         return smoothEdges ? smoothed(outline) : outline
     }
 
-    /// Vision's low-resolution instance mask stores 0 for background and instance indices for objects.
-    @available(macOS 14.0, *)
-    private static func instanceIndex(in pixelBuffer: CVPixelBuffer, at point: CGPoint, imageSize: CGSize) throws -> Int? {
-        let width = CVPixelBufferGetWidth(pixelBuffer)
-        let height = CVPixelBufferGetHeight(pixelBuffer)
-        guard width > 0, height > 0, imageSize.width > 0, imageSize.height > 0 else { return nil }
-        let bytes = try grayscaleBytes(from: pixelBuffer, width: width, height: height, interpolation: .none)
-        let x = min(width - 1, max(0, Int((point.x / imageSize.width) * CGFloat(width))))
-        let y = min(height - 1, max(0, Int((point.y / imageSize.height) * CGFloat(height))))
-        let value = Int(bytes[y * width + x])
-        return value == 0 ? nil : value
-    }
-
-    @available(macOS 14.0, *)
-    private static func edgePreservedBinaryMask(from pixelBuffer: CVPixelBuffer, guide: CGImage, width: Int, height: Int) throws -> [UInt8] {
-        let coarse = CIImage(cvPixelBuffer: pixelBuffer)
-        let guideImage = CIImage(cgImage: guide)
-        let refined: CIImage
-        if let filter = CIFilter(name: "CIEdgePreserveUpsampleFilter") {
-            filter.setValue(guideImage, forKey: kCIInputImageKey)
-            filter.setValue(coarse, forKey: "inputSmallImage")
-            filter.setValue(5, forKey: "inputSpatialSigma")
-            filter.setValue(0.15, forKey: "inputLumaSigma")
-            refined = filter.outputImage ?? coarse
-        } else {
-            refined = coarse
-        }
-        let grayscale = try grayscaleBytes(from: refined, width: width, height: height, interpolation: .high)
-        return grayscale.map { $0 >= 128 ? 255 : 0 }
+    private static func grayImage(_ bytes: [UInt8], width: Int, height: Int) -> CGImage? {
+        guard width > 0, height > 0, let provider = CGDataProvider(data: Data(bytes) as CFData) else { return nil }
+        return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 8, bytesPerRow: width,
+                       space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
+                       provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
     }
 
     private static func adjusted(binaryMask: [UInt8], width: Int, height: Int, edgeOffset: Int) -> [UInt8] {
@@ -224,13 +238,11 @@ nonisolated enum ObjectSelection {
         return points
     }
 
-    @available(macOS 14.0, *)
     private static func grayscaleBytes(from pixelBuffer: CVPixelBuffer, width: Int, height: Int,
                                        interpolation: CGInterpolationQuality) throws -> [UInt8] {
         try grayscaleBytes(from: CIImage(cvPixelBuffer: pixelBuffer), width: width, height: height, interpolation: interpolation)
     }
 
-    @available(macOS 14.0, *)
     private static func grayscaleBytes(from image: CIImage, width: Int, height: Int,
                                        interpolation: CGInterpolationQuality) throws -> [UInt8] {
         let renderer = CIContext(options: [.workingColorSpace: NSNull(), .outputColorSpace: NSNull()])
@@ -255,14 +267,14 @@ nonisolated enum ObjectSelection {
     }
 }
 
-private nonisolated struct ObjectSelectionJob: @unchecked Sendable {
+private struct ObjectSelectionJob: @unchecked Sendable {
     let image: CGImage
     let point: CGPoint
     let edgeOffset: Int
     let smoothEdges: Bool
 }
 
-private nonisolated struct ObjectSelectionResult: @unchecked Sendable {
+private struct ObjectSelectionResult: @unchecked Sendable {
     let path: CGPath?
     let error: Error?
 }

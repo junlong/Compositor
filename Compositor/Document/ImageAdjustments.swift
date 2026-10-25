@@ -2,7 +2,7 @@ import AppKit
 
 /// Draws an image into an RGBA buffer (premultiplied, alpha last), lets a C kernel change it in place,
 /// and returns the result.
-nonisolated enum ImageAdjustmentPixels {
+enum ImageAdjustmentPixels {
     static func run(_ image: CGImage, _ body: (UnsafeMutablePointer<UInt8>, Int, Int, Int) -> Void) throws -> CGImage {
         let context = try BrushRaster.context(width: image.width, height: image.height, mask: false)
         BrushRaster.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height), mask: false, context: context)
@@ -17,7 +17,7 @@ nonisolated enum ImageAdjustmentPixels {
 }
 
 /// A straight sRGB color stored with an adjustment, 0–1 per channel.
-nonisolated struct AdjustmentColor: Codable, Equatable, Sendable {
+struct AdjustmentColor: Codable, Equatable, Sendable {
     var red: Double
     var green: Double
     var blue: Double
@@ -34,7 +34,7 @@ nonisolated struct AdjustmentColor: Codable, Equatable, Sendable {
 
 /// Photoshop's Exposure: `exposure` (stops) scales linear light and `offset` shifts it, then gamma
 /// correction bends the result. The same curve runs on every channel; alpha is kept.
-nonisolated struct ExposureSettings: Codable, Equatable, Sendable {
+struct ExposureSettings: Codable, Equatable, Sendable {
     static let exposureRange: ClosedRange<Double> = -20...20
     static let offsetRange: ClosedRange<Double> = -0.5...0.5
     static let gammaRange: ClosedRange<Double> = 0.01...9.99
@@ -72,7 +72,7 @@ nonisolated struct ExposureSettings: Codable, Equatable, Sendable {
 
 /// Gradient Map: each pixel's brightness picks a color between `shadows` and `highlights` (the other
 /// way round when reversed); alpha is kept.
-nonisolated struct GradientMapSettings: Codable, Equatable, Sendable {
+struct GradientMapSettings: Codable, Equatable, Sendable {
     var shadows = AdjustmentColor(red: 0, green: 0, blue: 0)
     var highlights = AdjustmentColor(red: 1, green: 1, blue: 1)
     var reversed = false
@@ -111,7 +111,7 @@ nonisolated struct GradientMapSettings: Codable, Equatable, Sendable {
 /// Black & White, as Photoshop's is: not a desaturation, but a choice of how bright each family of
 /// colors becomes in gray. Reds at 40% and yellows at 60% is why a default conversion keeps skin and
 /// foliage apart where a plain luminance flattens them.
-nonisolated struct BlackWhiteSettings: Codable, Equatable, Sendable {
+struct BlackWhiteSettings: Codable, Equatable, Sendable {
     static let range: ClosedRange<Double> = -200...300
     /// Photoshop's defaults.
     var reds: Double = 40
@@ -143,7 +143,7 @@ nonisolated struct BlackWhiteSettings: Codable, Equatable, Sendable {
 /// Color Balance: shifts color towards one end of each opposing pair, separately for shadows,
 /// midtones and highlights. Preserve Luminosity puts each pixel's brightness back afterwards, so a
 /// warm cast doesn't also lighten the picture.
-nonisolated struct ColorBalanceSettings: Codable, Equatable, Sendable {
+struct ColorBalanceSettings: Codable, Equatable, Sendable {
     static let range: ClosedRange<Double> = -100...100
     var shadowCyanRed: Double = 0
     var shadowMagentaGreen: Double = 0
@@ -177,7 +177,7 @@ nonisolated struct ColorBalanceSettings: Codable, Equatable, Sendable {
 
 /// Film grain: brightness noise, strongest in the midtones. Its pattern is fixed in document space by
 /// `seed`, so it stays put as the canvas pans or redraws part of the image.
-nonisolated struct GrainSettings: Codable, Equatable, Sendable {
+struct GrainSettings: Codable, Equatable, Sendable {
     static let amountRange: ClosedRange<Double> = 0...100
     static let sizeRange: ClosedRange<Double> = 0.5...20
     static let roughnessRange: ClosedRange<Double> = 0...100

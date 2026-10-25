@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 struct EditorCanvas: NSViewRepresentable {
     let session: EditorSession
     func makeNSView(context: Context) -> CanvasView { CanvasView(session: session) }
@@ -476,9 +477,9 @@ final class CanvasView: NSView {
     /// The eyedropper to show now: Color Range's says whether a click adds or takes away.
     private var pickCursor: NSCursor {
         switch session.colorRange?.effectiveMode {
-        case .add: Self.eyedropperAddCursor
-        case .remove: Self.eyedropperRemoveCursor
-        default: Self.eyedropperCursor
+        case .add: return Self.eyedropperAddCursor
+        case .remove: return Self.eyedropperRemoveCursor
+        default: return Self.eyedropperCursor
         }
     }
 
@@ -666,7 +667,8 @@ final class CanvasView: NSView {
         for overlay in [lines, transformOverlay, brushCursor, sampleRing] as [NSView] { overlay.wantsLayer = true }
         lines.autoresizingMask = [.width, .height]
         lines.drawLines = { [weak self] dirtyRect in self?.drawLines(in: dirtyRect) }
-        clipsToBounds = true
+        wantsLayer = true
+        layer?.masksToBounds = true
         setAccessibilityElement(true)
         setAccessibilityRole(.image)
         setAccessibilityLabel("Canvas")

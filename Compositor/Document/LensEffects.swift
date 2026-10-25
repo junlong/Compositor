@@ -3,7 +3,7 @@ import CoreImage
 
 /// Filter › Lens Effects: what light does inside a camera's lens and the filters in front of it. Each effect is made from
 /// the picture's own light, in linear light as optics work, so only real light sources flare and nothing is pasted on.
-nonisolated enum LensEffect: String, CaseIterable, Sendable {
+enum LensEffect: String, CaseIterable, Sendable {
     case anamorphicFlare = "Anamorphic Flare"
     case starburst = "Starburst"
     case mist = "Mist"
@@ -12,7 +12,7 @@ nonisolated enum LensEffect: String, CaseIterable, Sendable {
 }
 
 /// The shape a lens draws its out-of-focus lights in.
-nonisolated enum BokehShape: String, CaseIterable, Sendable {
+enum BokehShape: String, CaseIterable, Sendable {
     /// Wide open.
     case round = "Round"
     /// Stopped down, its aperture's blades showing as straight sides.
@@ -25,7 +25,7 @@ nonisolated enum BokehShape: String, CaseIterable, Sendable {
     var index: UInt32 { UInt32(Self.allCases.firstIndex(of: self) ?? 0) }
 }
 
-nonisolated struct LensEffectSettings: Equatable, Sendable {
+struct LensEffectSettings: Equatable, Sendable {
     static let starPointChoices = [4, 6, 8, 12, 14]
     static let bokehSizes: ClosedRange<Double> = 0.5...6
 
@@ -66,11 +66,11 @@ nonisolated struct LensEffectSettings: Equatable, Sendable {
     /// Nothing to do: OK closes as Cancel does.
     var isIdentity: Bool {
         switch effect {
-        case .anamorphicFlare: flareAmount == 0
-        case .starburst: starAmount == 0
-        case .mist: mistStrength == 0
-        case .prism: prismAmount == 0
-        case .bokeh: false
+        case .anamorphicFlare: return flareAmount == 0
+        case .starburst: return starAmount == 0
+        case .mist: return mistStrength == 0
+        case .prism: return prismAmount == 0
+        case .bokeh: return false
         }
     }
 
@@ -119,7 +119,7 @@ nonisolated struct LensEffectSettings: Equatable, Sendable {
 }
 
 /// The light arithmetic behind the lens effects, in Core Image.
-private nonisolated enum LensOptics {
+private enum LensOptics {
     static func linear(_ image: CIImage) -> CIImage { image.applyingFilter("CISRGBToneCurveToLinear") }
     static func gamma(_ image: CIImage) -> CIImage { image.applyingFilter("CILinearToSRGBToneCurve") }
 

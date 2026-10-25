@@ -3,7 +3,7 @@ import ImageIO
 import CoreGraphics
 
 /// Encoded frames and small previews are immutable and shared by layers, history and background saves.
-nonisolated final class GIFSource: @unchecked Sendable {
+final class GIFSource: @unchecked Sendable {
     static let byteLimit = 512 * 1024 * 1024
     static let totalByteLimit = DocumentLimits.documentPixelBudget * 4
     static let totalThumbnailPixelBudget = GIFTimelineLimits.thumbnailPixelBudget
@@ -38,7 +38,7 @@ nonisolated final class GIFSource: @unchecked Sendable {
 }
 
 /// Image Size's rasterization, applied lazily to every frame, including rotation and uneven scaling.
-nonisolated struct GIFFrameGeometry: Equatable, Codable, Sendable {
+struct GIFFrameGeometry: Equatable, Codable, Sendable {
     let width: Int
     let height: Int
     let a: Double
@@ -79,12 +79,12 @@ nonisolated struct GIFFrameGeometry: Equatable, Codable, Sendable {
 }
 
 /// A stable editable frame identity, distinct from its composed frame in the immutable GIF.
-nonisolated struct GIFFrameReference: Equatable, Codable, Sendable {
+struct GIFFrameReference: Equatable, Codable, Sendable {
     let index: Int
     let sourceIndex: Int
 }
 
-nonisolated struct GIFAnimation: Equatable, Sendable {
+struct GIFAnimation: Equatable, Sendable {
     let source: GIFSource
     /// The frame restored on opening. Navigation and playback stay in the editor's runtime state.
     var selectedFrameIndex = 0

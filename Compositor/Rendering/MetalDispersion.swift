@@ -7,7 +7,7 @@ import Metal
 /// continuous rainbow as light through a prism does, rather than three offset copies. Blur smears each of those along
 /// the same line, into streaks. Linear splits along one direction everywhere; Radial splits outwards from a center,
 /// more the farther from it, leaving the center sharp.
-nonisolated final class MetalDispersion: @unchecked Sendable {
+final class MetalDispersion: @unchecked Sendable {
     static let shared: MetalDispersion? = try? MetalDispersion()
     private let device: MTLDevice
     private let queue: MTLCommandQueue

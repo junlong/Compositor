@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-nonisolated struct PSDImport: @unchecked Sendable {
+struct PSDImport: @unchecked Sendable {
     let width: Int
     let height: Int
     let resolution: Double
@@ -9,7 +9,7 @@ nonisolated struct PSDImport: @unchecked Sendable {
     let conversions: [PSDConversion]
 }
 
-nonisolated enum PSDDocumentBuilder {
+enum PSDDocumentBuilder {
     static func assets(from document: PSDDocument) throws -> [UUID: ImportedImage] {
         var result: [UUID: ImportedImage] = [:]
         for record in document.layers {
@@ -19,7 +19,7 @@ nonisolated enum PSDDocumentBuilder {
         return result
     }
 
-    @MainActor
+
     static func makeImport(_ document: PSDDocument, assets: [UUID: ImportedImage] = [:]) throws -> PSDImport {
         var conversions: [PSDConversion] = []
         var layers: [ImageLayer] = []
@@ -148,7 +148,7 @@ extension PSDDocumentBuilder {
     /// A PSD layer mask on the layer's own pixel grid, as Compositor's masks are: the stored patch drawn where it sits
     /// on the document, and Photoshop's default value everywhere else. The patch alone, stretched over the layer, would
     /// put the mask in the wrong place. Adjustment layers and folders cover the canvas.
-    nonisolated static func maskOnLayerGrid(_ patch: CGImage, record: PSDRecord, layer: ImageLayer, canvas: CGSize) -> CGImage? {
+    static func maskOnLayerGrid(_ patch: CGImage, record: PSDRecord, layer: ImageLayer, canvas: CGSize) -> CGImage? {
         let grid = layer.asset.map { CGSize(width: $0.image.width, height: $0.image.height) } ?? canvas
         let placed = CGRect(origin: layer.transform.origin, size: layer.transform.size)
         guard grid.width >= 1, grid.height >= 1, placed.width > 0, placed.height > 0,

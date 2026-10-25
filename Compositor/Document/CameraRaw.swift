@@ -2,13 +2,13 @@ import AppKit
 
 /// White balance on an already-rendered layer. Raw lighting presets are absent: temperature and tint
 /// are relative offsets, not kelvin.
-nonisolated enum CameraRawWhiteBalance: String, CaseIterable, Sendable {
+enum CameraRawWhiteBalance: String, CaseIterable, Sendable {
     case custom = "Custom"
     case auto = "Auto"
 }
 
 /// Glow's three looks. Warmth tints Diffusion and Bloom from cool to warm; Halation's fringe stays red.
-nonisolated enum CameraRawGlowStyle: String, CaseIterable, Sendable {
+enum CameraRawGlowStyle: String, CaseIterable, Sendable {
     case diffusion = "Diffusion"
     case bloom = "Bloom"
     case halation = "Halation"
@@ -22,7 +22,7 @@ nonisolated enum CameraRawGlowStyle: String, CaseIterable, Sendable {
 }
 
 /// Post-crop vignette. Highlight Priority is the style whose Highlights slider protects bright pixels.
-nonisolated enum CameraRawVignetteStyle: String, CaseIterable, Sendable {
+enum CameraRawVignetteStyle: String, CaseIterable, Sendable {
     case highlightPriority = "Highlight Priority"
     case colorPriority = "Color Priority"
     case paintOverlay = "Paint Overlay"
@@ -36,7 +36,7 @@ nonisolated enum CameraRawVignetteStyle: String, CaseIterable, Sendable {
 }
 
 /// Temporary clipping view while Option is held on a Light slider. Never written into the layer.
-nonisolated enum CameraRawClipping: Int32, Sendable {
+enum CameraRawClipping: Int32, Sendable {
     /// Clipped channels lit on black. Exposure, Highlights, and Whites.
     case highlights = 1
     /// Clipped channels dark on white. Shadows and Blacks.
@@ -44,7 +44,7 @@ nonisolated enum CameraRawClipping: Int32, Sendable {
 }
 
 /// Camera Raw Filter settings. Defaults leave the image unchanged.
-nonisolated struct CameraRawSettings: Equatable, Sendable {
+struct CameraRawSettings: Equatable, Sendable {
     static let exposureRange: ClosedRange<Double> = -5...5
     static let toneRange: ClosedRange<Double> = -100...100
     static let unitRange: ClosedRange<Double> = 0...100
@@ -321,13 +321,13 @@ nonisolated struct CameraRawSettings: Equatable, Sendable {
 }
 
 /// Histogram or the vectorscope shown in its place.
-nonisolated enum CameraRawScopeMode: String, Sendable {
+enum CameraRawScopeMode: String, Sendable {
     case histogram = "Histogram"
     case vectorscope = "Vectorscope"
 }
 
 /// One RGB histogram and a hue/saturation vectorscope of the same graded pixels.
-nonisolated struct CameraRawScope: Equatable, Sendable {
+struct CameraRawScope: Equatable, Sendable {
     static let binCount = 256
     static let scopeSide = 64
     var red: [Double]

@@ -1,40 +1,41 @@
 import AppKit
-import Observation
+import Combine
 
 /// Select > Color Range: every pixel near the colors clicked on the canvas, anywhere in the image. The panel shows
 /// the selection live; OK keeps it as one undo step, Cancel puts back the one there was.
-@MainActor @Observable
-final class ColorRangeEdit {
+
+@MainActor
+final class ColorRangeEdit: ObservableObject {
     static let fuzzinessRange: ClosedRange<Double> = 0...200
     /// The panel's preview fits in this, in points.
-    nonisolated static let previewSize = CGSize(width: 292, height: 200)
-    var fuzziness: Double = 40
-    var invert = false
+    static let previewSize = CGSize(width: 292, height: 200)
+    @Published var fuzziness: Double = 40
+    @Published var invert = false
     /// What the next click on the canvas does: start over from that color, add it, or take it away.
-    var sampleMode: HueSampleMode = .replace
+    @Published var sampleMode: HueSampleMode = .replace
     /// Shift (add) or Option (take away) held right now, which a click uses over `sampleMode`.
-    var held: HueSampleMode?
+    @Published var held: HueSampleMode?
     var effectiveMode: HueSampleMode { held ?? sampleMode }
     /// The selection in black and white, small enough for the panel. Nil until a color is picked.
-    var preview: CGImage?
-    var include: [UInt8] = []
-    var exclude: [UInt8] = []
-    var error: String?
+    @Published var preview: CGImage?
+    @Published var include: [UInt8] = []
+    @Published var exclude: [UInt8] = []
+    @Published var error: String?
     /// The image as shown, at document size: what the colors are matched against.
-    @ObservationIgnored let image: CGImage
-    @ObservationIgnored let original: DocumentSelection?
-    @ObservationIgnored var generation = 0
+    let image: CGImage
+    let original: DocumentSelection?
+    var generation = 0
     init(image: CGImage, original: DocumentSelection?) { self.image = image; self.original = original }
     var hasColors: Bool { !include.isEmpty }
 }
 
-private nonisolated struct ColorRangeJob: @unchecked Sendable {
+private struct ColorRangeJob: @unchecked Sendable {
     let image: CGImage
     let include: [UInt8], exclude: [UInt8]
     let fuzziness: Int32, invert: Bool
 }
 
-private nonisolated struct ColorRangeResult: @unchecked Sendable {
+private struct ColorRangeResult: @unchecked Sendable {
     var path: CGPath?
     var preview: CGImage?
     var error: Error?
@@ -111,7 +112,7 @@ extension EditorSession {
         return (0..<3).map { UInt8(min(255, (sums[$0] * 255 + sums[3] / 2) / sums[3])) }
     }
 
-    private nonisolated static func colorRangeResult(_ job: ColorRangeJob) -> ColorRangeResult {
+    nonisolated private static func colorRangeResult(_ job: ColorRangeJob) -> ColorRangeResult {
         var result = ColorRangeResult()
         do {
             let mask = try colorRangeMask(job)
@@ -122,7 +123,7 @@ extension EditorSession {
     }
 
     /// The mask shrunk to the panel's preview, white where selected, at twice its size for a sharp Retina picture.
-    private nonisolated static func preview(of mask: [UInt8], width: Int, height: Int) -> CGImage? {
+    nonisolated private static func preview(of mask: [UInt8], width: Int, height: Int) -> CGImage? {
         let scale = min(ColorRangeEdit.previewSize.width / CGFloat(width), ColorRangeEdit.previewSize.height / CGFloat(height)) * 2
         let w = max(1, Int(CGFloat(width) * scale)), h = max(1, Int(CGFloat(height) * scale))
         var bytes = mask
@@ -137,7 +138,7 @@ extension EditorSession {
         return context.makeImage()
     }
 
-    private nonisolated static func colorRangeMask(_ job: ColorRangeJob) throws -> [UInt8] {
+    nonisolated private static func colorRangeMask(_ job: ColorRangeJob) throws -> [UInt8] {
         let width = job.image.width, height = job.image.height
         let context = try BrushRaster.context(width: width, height: height, mask: false)
         BrushRaster.draw(job.image, in: CGRect(x: 0, y: 0, width: width, height: height), mask: false, context: context)

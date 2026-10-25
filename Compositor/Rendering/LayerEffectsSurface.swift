@@ -4,7 +4,7 @@ import CoreImage
 /// A layer's effects kept at full resolution while it is painted, and brought up to date only where the paint
 /// changed. Rebuilding every effect over a whole layer for each dab is what made painting drag; the cost here
 /// follows the brush instead, so a small brush on a big layer is cheap however large the layer is.
-@MainActor final class LayerEffectsSurface {
+final class LayerEffectsSurface {
     let layerID: UUID
     /// The grid the stroke paints in, in layer pixels, and where the layer's own pixels sit inside it.
     let grid: CGSize

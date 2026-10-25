@@ -5,7 +5,7 @@ import Metal
 /// separable, so each runs as a row pass and a column pass over the same pixels. Falls back to the CPU renderer
 /// when Metal isn't available (see `LayerEffectsRenderer`). Export renders on a worker, so it holds only Metal objects,
 /// which are safe to use from any thread.
-nonisolated final class MetalLayerEffects: Sendable {
+final class MetalLayerEffects: Sendable {
     static let shared: MetalLayerEffects? = try? MetalLayerEffects()
     private let device: MTLDevice
     private let queue: MTLCommandQueue

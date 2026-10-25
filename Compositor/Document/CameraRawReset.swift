@@ -1,7 +1,7 @@
 import Foundation
 
 /// The Camera Raw panel's sections, each of which can be put back to its defaults on its own.
-nonisolated enum CameraRawGroup: String, CaseIterable, Sendable {
+enum CameraRawGroup: String, CaseIterable, Sendable {
     case light = "Light"
     case color = "Color"
     case effects = "Effects"
@@ -14,7 +14,7 @@ nonisolated enum CameraRawGroup: String, CaseIterable, Sendable {
     case calibration = "Calibration"
 }
 
-nonisolated extension CameraRawSettings {
+extension CameraRawSettings {
     /// These settings with `group` back to its defaults, choices and midpoints included; the other sections unchanged.
     func resetting(_ group: CameraRawGroup) -> Self {
         var result = self

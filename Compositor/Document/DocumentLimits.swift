@@ -13,7 +13,7 @@ import Foundation
 /// Both pixel ceilings stay below `maxSide * maxSide`, so a square at `maxSide` is still rejected
 /// as oversized. Several tests express "too large" that way, and it is the largest area the side
 /// limit can describe.
-nonisolated enum DocumentLimits {
+enum DocumentLimits {
     /// Longest side, in pixels, of any canvas, layer, mask or generated surface.
     static let maxSide = 30_000
 

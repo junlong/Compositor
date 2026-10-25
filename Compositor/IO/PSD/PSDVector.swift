@@ -4,7 +4,7 @@ import Foundation
 /// Rasterizes Photoshop vector masks (`vmsk`/`vsms`) and maps fill rectangles/ellipses
 /// onto live shape layers, from Adobe’s 2019 Photoshop File Formats Specification
 /// (additional layer information: `vmsk`, `vogk`, `SoCo`, `vstk`).
-nonisolated enum PSDVector {
+enum PSDVector {
     struct Raster {
         var image: CGImage
         var bounds: CGRect

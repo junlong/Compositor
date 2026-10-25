@@ -1,10 +1,10 @@
 import AppKit
 
-nonisolated struct CurvePoint: Codable, Equatable, Sendable {
+struct CurvePoint: Codable, Equatable, Sendable {
     var x: Double
     var y: Double
 }
-nonisolated struct CurvesSettings: Codable, Equatable, Sendable {
+struct CurvesSettings: Codable, Equatable, Sendable {
     var channel = LevelsChannel.rgb
     var channels = Array(repeating: [CurvePoint(x: 0, y: 0), CurvePoint(x: 255, y: 255)], count: 4)
     var isValid: Bool {

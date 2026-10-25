@@ -3,7 +3,7 @@ import CoreGraphics
 
 /// Immutable, normalized layer-local coverage. Regular grayscale images use white
 /// for reveal, black for hide, and intermediate gray for soft coverage.
-nonisolated struct LayerMask: Equatable, @unchecked Sendable {
+struct LayerMask: Equatable, @unchecked Sendable {
     let asset: ImportedImage
     var isEnabled = true
     /// Where the mask sits on the document once it has been moved apart from its layer; nil while it covers the
@@ -127,7 +127,7 @@ nonisolated struct LayerMask: Equatable, @unchecked Sendable {
 
 /// Masks resampled into their layers' grids (`LayerMask.clipImage`), so redraws reuse them; the least recently used
 /// go beyond a few entries or a pixel budget.
-nonisolated final class MaskPlacementCache: @unchecked Sendable {
+final class MaskPlacementCache: @unchecked Sendable {
     static let shared = MaskPlacementCache()
     private struct Entry {
         let mask: CGImage
@@ -169,7 +169,7 @@ nonisolated final class MaskPlacementCache: @unchecked Sendable {
 /// layers inside are drawn straight onto what is below, never composited as a unit — so a
 /// folder mask applies to each of those layers, multiplied with the layer's own mask and the
 /// masks of any folders further out (Core Graphics multiplies nested mask clips).
-nonisolated struct FolderMaskClip {
+struct FolderMaskClip {
     let image: CGImage
     let transform: LayerTransform
 
@@ -210,7 +210,7 @@ nonisolated struct FolderMaskClip {
 }
 
 extension ProjectSnapshot {
-    nonisolated func mask(for layer: ProjectLayerRecord) -> LayerMask? {
+    func mask(for layer: ProjectLayerRecord) -> LayerMask? {
         guard layer.maskFile != nil, let asset = masks[layer.id] else { return nil }
         return LayerMask(asset: asset, isEnabled: layer.maskEnabled ?? true, placement: layer.maskPlacement, isLinked: layer.maskLinked ?? true)
     }

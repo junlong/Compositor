@@ -1,12 +1,12 @@
 import Foundation
 
-nonisolated enum GIFDelayMode: String, CaseIterable, Codable, Sendable {
+enum GIFDelayMode: String, CaseIterable, Codable, Sendable {
     case perFrame = "Frame delay"
     case uniform = "Same for all"
 }
 
 /// Delays belong to editable frame identities; the encoded source stays immutable.
-nonisolated struct GIFFrameTiming: Equatable, Sendable {
+struct GIFFrameTiming: Equatable, Sendable {
     static let delayRange = GIFTimelineLimits.minimumFrameDuration...655.35
     var mode: GIFDelayMode = .perFrame
     var uniformDelay: TimeInterval = GIFTimelineLimits.defaultFrameDuration

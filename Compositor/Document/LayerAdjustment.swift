@@ -1,7 +1,7 @@
 import AppKit
 import CoreImage
 
-nonisolated enum AdjustmentKind: String, Codable, CaseIterable, Sendable {
+enum AdjustmentKind: String, Codable, CaseIterable, Sendable {
     case hsv = "Hue/Saturation", levels = "Levels", curves = "Curves"
     case exposure = "Exposure", gradientMap = "Gradient Map", grain = "Grain", addNoise = "Add Noise"
     case gaussianBlur = "Gaussian Blur", motionBlur = "Motion Blur"
@@ -53,7 +53,7 @@ nonisolated enum AdjustmentKind: String, Codable, CaseIterable, Sendable {
         }
     }
 }
-nonisolated struct LayerAdjustment: Codable, Equatable, Sendable {
+struct LayerAdjustment: Codable, Equatable, Sendable {
     var kind: AdjustmentKind
     var hue: Double = 0
     var saturation: Double = 0
@@ -165,9 +165,9 @@ nonisolated struct LayerAdjustment: Codable, Equatable, Sendable {
     /// Its color lookup, for those whose channels mix, to apply at 16 bits (`DeepLayer.lookup`); nil for the rest.
     var sixteenBitLookup: (cube: Data, dimension: Int)? {
         switch kind {
-        case .hsv: (HueSaturationFilter.cube(resolvedHSV), HueSaturationFilter.dimension)
-        case .blackWhite, .colorBalance, .gradientMap: GPUAdjustment.cube(for: self).map { ($0, GPUAdjustment.dimension) }
-        default: nil
+        case .hsv: return (HueSaturationFilter.cube(resolvedHSV), HueSaturationFilter.dimension)
+        case .blackWhite, .colorBalance, .gradientMap: return GPUAdjustment.cube(for: self).map { ($0, GPUAdjustment.dimension) }
+        default: return nil
         }
     }
 
@@ -207,10 +207,11 @@ nonisolated struct LayerAdjustment: Codable, Equatable, Sendable {
             settings.amount = resolvedNoiseAmount
             settings.gaussian = resolvedNoiseGaussian
             settings.monochromatic = resolvedNoiseMonochromatic
-            let filterKind: FilterKind = switch kind {
-            case .gaussianBlur: .gaussianBlur
-            case .motionBlur: .motionBlur
-            default: .addNoise
+            let filterKind: FilterKind
+            switch kind {
+            case .gaussianBlur: filterKind = .gaussianBlur
+            case .motionBlur: filterKind = .motionBlur
+            default: filterKind = .addNoise
             }
             var job = FilterJob(kind: filterKind, image: image, settings: settings,
                                 scale: scale, selection: nil, mapping: .identity,
@@ -278,7 +279,7 @@ extension EditorSession {
 
 /// The settings a Progressive Blur, Bloom / Glow or RGB Split adjustment layer keeps: those of its filter (see
 /// `FilterSettings`), positions in the document's pixels.
-nonisolated struct FilterLayerSettings: Codable, Equatable, Sendable {
+struct FilterLayerSettings: Codable, Equatable, Sendable {
     var progressiveFrom: Double = 0
     var progressiveTo: Double = 20
     var progressiveStart: CGPoint?

@@ -2,20 +2,20 @@ import CoreGraphics
 import Foundation
 import UniformTypeIdentifiers
 
-nonisolated enum PSDError: LocalizedError, Equatable {
+enum PSDError: LocalizedError, Equatable {
     case truncated, unsupportedVersion, unsupportedColorMode, unsupportedDepth, unsupportedCompression
     var errorDescription: String? {
         switch self {
-        case .truncated: "The Photoshop file could not be read. It may be damaged or incomplete."
-        case .unsupportedVersion: "This Photoshop file uses a format version Compositor can’t read."
-        case .unsupportedColorMode: "Only 8-bit RGB and CMYK Photoshop files can be imported."
-        case .unsupportedDepth: "Only 8-bit RGB and CMYK Photoshop files can be imported."
-        case .unsupportedCompression: "This Photoshop file uses a layer compression method that isn’t supported."
+        case .truncated: return "The Photoshop file could not be read. It may be damaged or incomplete."
+        case .unsupportedVersion: return "This Photoshop file uses a format version Compositor can’t read."
+        case .unsupportedColorMode: return "Only 8-bit RGB and CMYK Photoshop files can be imported."
+        case .unsupportedDepth: return "Only 8-bit RGB and CMYK Photoshop files can be imported."
+        case .unsupportedCompression: return "This Photoshop file uses a layer compression method that isn’t supported."
         }
     }
 }
 
-nonisolated struct PSDConversion: Identifiable, Equatable, Sendable {
+struct PSDConversion: Identifiable, Equatable, Sendable {
     let id: UUID
     let layerName: String
     let message: String
@@ -26,7 +26,7 @@ nonisolated struct PSDConversion: Identifiable, Equatable, Sendable {
     }
 }
 
-nonisolated struct PSDDocument: @unchecked Sendable {
+struct PSDDocument: @unchecked Sendable {
     var width: Int
     var height: Int
     var resolution: Double
@@ -36,7 +36,7 @@ nonisolated struct PSDDocument: @unchecked Sendable {
     var layers: [PSDRecord]
 }
 
-nonisolated struct PSDRecord: @unchecked Sendable {
+struct PSDRecord: @unchecked Sendable {
     var id: UUID
     var parentID: UUID?
     var name: String
@@ -70,7 +70,7 @@ extension PSDDocument {
     /// first, which is usually the first artboard made): each the artboard's size, with its layers moved
     /// so the artboard's corner is the canvas's and no artboard folder around them. Nil for a file without artboards.
     /// Layers outside every artboard belong to none, so none of the documents has them.
-    nonisolated func artboards() -> [(name: String, document: PSDDocument)]? {
+    func artboards() -> [(name: String, document: PSDDocument)]? {
         let boards = layers.filter { $0.isGroup && $0.artboard != nil }
         guard !boards.isEmpty else { return nil }
         let ids = Set(boards.map(\.id))
@@ -103,44 +103,44 @@ extension PSDDocument {
     }
 }
 
-nonisolated enum PSDLayerKind: Equatable, Sendable {
+enum PSDLayerKind: Equatable, Sendable {
     case raster, group, adjustment, text, smartObject, effects, vector, other
 }
 
 extension LayerBlendMode {
-    nonisolated static func fromPSD(_ key: String) -> LayerBlendMode? {
+    static func fromPSD(_ key: String) -> LayerBlendMode? {
         switch key {
-        case "norm": .normal
-        case "mul ": .multiply
-        case "scrn": .screen
-        case "over": .overlay
-        case "sLit": .softLight
-        case "dark": .darken
-        case "lite": .lighten
-        case "diff": .difference
-        case "div ": .colorDodge
-        case "idiv": .colorBurn
-        case "hue ": .hue
-        case "sat ": .saturation
-        case "colr": .color
-        case "lum ": .luminosity
-        case "lbrn": .linearBurn
-        case "lddg": .linearDodge
-        case "hLit": .hardLight
-        case "vLit": .vividLight
-        case "lLit": .linearLight
-        case "pLit": .pinLight
-        case "hMix": .hardMix
-        case "smud": .exclusion
-        case "fsub": .subtract
-        case "fdiv": .divide
+        case "norm": return .normal
+        case "mul ": return .multiply
+        case "scrn": return .screen
+        case "over": return .overlay
+        case "sLit": return .softLight
+        case "dark": return .darken
+        case "lite": return .lighten
+        case "diff": return .difference
+        case "div ": return .colorDodge
+        case "idiv": return .colorBurn
+        case "hue ": return .hue
+        case "sat ": return .saturation
+        case "colr": return .color
+        case "lum ": return .luminosity
+        case "lbrn": return .linearBurn
+        case "lddg": return .linearDodge
+        case "hLit": return .hardLight
+        case "vLit": return .vividLight
+        case "lLit": return .linearLight
+        case "pLit": return .pinLight
+        case "hMix": return .hardMix
+        case "smud": return .exclusion
+        case "fsub": return .subtract
+        case "fdiv": return .divide
         // Dissolve, Darker Color and Lighter Color are deliberately absent: Compositor has no
         // equivalent, so they fall through to Normal and say so in the conversion report.
-        default: nil
+        default: return nil
         }
     }
 }
 
 extension PSDRecord {
-    nonisolated var blendMode: LayerBlendMode? { LayerBlendMode.fromPSD(blendKey) }
+    var blendMode: LayerBlendMode? { LayerBlendMode.fromPSD(blendKey) }
 }

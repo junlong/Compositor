@@ -12,6 +12,7 @@ enum FloatingPanelPlacement: Sendable {
 /// A movable, non-modal panel for tool dialogs: it never dims the editor, opens centered on
 /// the canvas the first time, and reopens wherever it was last left (for the app session).
 /// The close button reports through `onClose` so callers can treat it as Cancel.
+
 @MainActor
 final class FloatingPanelController: NSObject, NSWindowDelegate {
     /// Top-left corners (screen coordinates) per panel, so a panel reopens where it was left.
@@ -46,8 +47,7 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
         // Docked panels fill the window we size. An intrinsic SwiftUI height of zero (a scroll view
         // waiting for a proposed height) must not collapse the content.
         if placement == .dockedToMainWindowRight {
-            host.sizingOptions = []
-            host.autoresizingMask = [.width, .height]
+                host.autoresizingMask = [.width, .height]
         }
         panel.contentView = host
         if placement == .dockedToMainWindowRight {

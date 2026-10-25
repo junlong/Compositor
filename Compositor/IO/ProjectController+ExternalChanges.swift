@@ -4,6 +4,8 @@ import AppKit
 /// is reloaded in place: same tab, same viewport, same selection where the layers still exist. Only a real change
 /// in content counts; a package that was merely touched, or one caught half written, is left alone with no message.
 /// Unsaved work is never replaced without asking.
+
+@MainActor
 extension ProjectController {
     /// Starts (or restarts) watching the project the session has open. Called after a successful open and after
     /// every save, so the digest of the package on disk is always the one we last read or wrote.
@@ -66,7 +68,7 @@ extension ProjectController {
         let attempt = externalChanges.recheckAttempt
         externalChanges.recheckAttempt = min(attempt + 1, 7)
         externalChanges.recheck = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(250 * (1 << attempt)))
+            try? await Task.sleep(nanoseconds: UInt64(250 * (1 << attempt) * 1_000_000))
             guard let self, !Task.isCancelled else { return }
             self.noteExternalChange()
         }
@@ -98,7 +100,7 @@ extension ProjectController {
 
 /// The controller's bookkeeping for the watch: what the package looked like when last read or written, and
 /// whether a check is running, waiting, or deferred because a save of our own is in flight.
-@MainActor
+
 final class ExternalChangeState {
     var watcher: ProjectWatcher?
     var knownDigest: ProjectDigest?

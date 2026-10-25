@@ -1,7 +1,7 @@
 import AppKit
-import Observation
+import Combine
 
-nonisolated struct PaletteColor: Equatable, Sendable {
+struct PaletteColor: Equatable, Sendable {
     var red: CGFloat
     var green: CGFloat
     var blue: CGFloat
@@ -181,7 +181,7 @@ extension EditorSession {
         colorPicker = ColorPickerState(target: .dialog(title: title), original: color)
     }
     /// The picker is open for a dialog, which covers the canvas: there's nothing to sample.
-    var pickingForDialog: Bool { if case .dialog = colorPicker?.target { true } else { false } }
+    var pickingForDialog: Bool { if case .dialog = colorPicker?.target { return true } else { return false } }
     /// While the picker is open on a dialog's color, the dialog follows its working color.
     func previewDialogColor() {
         guard let colorPicker, case .dialog = colorPicker.target else { return }
@@ -286,14 +286,15 @@ enum ColorPickerTarget: Equatable {
 }
 
 /// The open color picker's working color. Nothing is written to the palette until OK.
-@Observable
-final class ColorPickerState {
+
+@MainActor
+final class ColorPickerState: ObservableObject {
     let target: ColorPickerTarget
     var background: Bool { target == .palette(background: true) }
     let original: PaletteColor
     /// The foreground picker opened while text was being edited: that text and the color it had.
-    var editedText: (draftID: UUID, style: LayerTextStyle)?
-    var hsb: PickerHSB
+    @Published var editedText: (draftID: UUID, style: LayerTextStyle)?
+    @Published var hsb: PickerHSB
     var color: PaletteColor { hsb.rgb.quantized }
     init(target: ColorPickerTarget, original: PaletteColor) {
         self.target = target

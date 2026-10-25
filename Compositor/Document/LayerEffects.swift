@@ -3,7 +3,7 @@ import CoreGraphics
 import CoreImage
 
 /// A line drawn around what the layer shows, outside its edge or inside it.
-nonisolated struct StrokeEffect: Codable, Equatable, Sendable {
+struct StrokeEffect: Codable, Equatable, Sendable {
     /// Supported document-pixel width; preview work is bounded independently of this value.
     static let maxSize: CGFloat = 500
     var enabled: Bool? = nil // Missing in older projects means visible.
@@ -22,7 +22,7 @@ nonisolated struct StrokeEffect: Codable, Equatable, Sendable {
 }
 
 /// The layer's shape repeated behind it, offset and softened.
-nonisolated struct ShadowEffect: Codable, Equatable, Sendable {
+struct ShadowEffect: Codable, Equatable, Sendable {
     var enabled: Bool? = nil
     var isEnabled: Bool { enabled ?? true }
     /// Where the light comes from, in degrees counterclockwise from the right, as Photoshop's dial is: 90 is from
@@ -50,7 +50,7 @@ nonisolated struct ShadowEffect: Codable, Equatable, Sendable {
 }
 
 /// A flat color over everything the layer shows.
-nonisolated struct ColorOverlayEffect: Codable, Equatable, Sendable {
+struct ColorOverlayEffect: Codable, Equatable, Sendable {
     var enabled: Bool? = nil
     var isEnabled: Bool { enabled ?? true }
     var red: CGFloat = 0
@@ -64,7 +64,7 @@ nonisolated struct ColorOverlayEffect: Codable, Equatable, Sendable {
 }
 
 /// A shadow cast inside the layer's own edges, as though it were cut out of what is behind it.
-nonisolated struct InnerShadowEffect: Codable, Equatable, Sendable {
+struct InnerShadowEffect: Codable, Equatable, Sendable {
     var enabled: Bool? = nil
     var isEnabled: Bool { enabled ?? true }
     var angle: CGFloat = 90
@@ -89,7 +89,7 @@ nonisolated struct InnerShadowEffect: Codable, Equatable, Sendable {
 }
 
 /// A soft glow drawn omnidirectionally around the outside of what the layer shows.
-nonisolated struct OuterGlowEffect: Codable, Equatable, Sendable {
+struct OuterGlowEffect: Codable, Equatable, Sendable {
     var enabled: Bool? = nil
     var isEnabled: Bool { enabled ?? true }
     var size: CGFloat = 20
@@ -106,7 +106,7 @@ nonisolated struct OuterGlowEffect: Codable, Equatable, Sendable {
 }
 
 /// A glow cast inside the layer's own edges, emanating inward from its boundary.
-nonisolated struct InnerGlowEffect: Codable, Equatable, Sendable {
+struct InnerGlowEffect: Codable, Equatable, Sendable {
     var enabled: Bool? = nil
     var isEnabled: Bool { enabled ?? true }
     var size: CGFloat = 10
@@ -124,7 +124,7 @@ nonisolated struct InnerGlowEffect: Codable, Equatable, Sendable {
 
 /// What a layer draws around itself. Kept with the layer, so it follows every edit and can be changed or removed
 /// at any time; the pixels themselves are never touched.
-nonisolated struct LayerEffects: Codable, Equatable, Sendable {
+struct LayerEffects: Codable, Equatable, Sendable {
     var stroke: StrokeEffect? = nil
     var shadow: ShadowEffect? = nil
     var colorOverlay: ColorOverlayEffect? = nil
@@ -223,7 +223,7 @@ nonisolated struct LayerEffects: Codable, Equatable, Sendable {
     }
 }
 
-nonisolated enum LayerEffectKind: String, CaseIterable, Sendable {
+enum LayerEffectKind: String, CaseIterable, Sendable {
     case stroke = "Stroke", shadow = "Drop Shadow", colorOverlay = "Color Overlay", innerShadow = "Inner Shadow", outerGlow = "Outer Glow", innerGlow = "Inner Glow"
 }
 
@@ -385,7 +385,7 @@ extension EditorSession {
 /// Draws a layer's effects around its pixels. The result is the layer as it should appear — shadow behind, stroke
 /// around, pixels on top — on a canvas grown by `inset` pixels on every side, so the caller places it by growing
 /// the layer's transform in the same proportion.
-nonisolated enum LayerEffectsRenderer {
+enum LayerEffectsRenderer {
     /// The last few layers drawn with effects, so the canvas doesn't rebuild them on every redraw.
     private final class Cache: @unchecked Sendable {
         private let lock = NSLock()

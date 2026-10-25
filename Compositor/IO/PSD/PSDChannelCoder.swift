@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-nonisolated struct PSDCrop: Sendable {
+struct PSDCrop: Sendable {
     let x: Int
     let y: Int
     let width: Int
@@ -10,7 +10,7 @@ nonisolated struct PSDCrop: Sendable {
 
 /// Unpacks Photoshop layer channels from Adobe’s 2019 Photoshop File Formats
 /// Specification (Image Data, compression 0 raw and 1 PackBits).
-nonisolated enum PSDChannelCoder {
+enum PSDChannelCoder {
     static func decode(compression: Int, width: Int, height: Int, data: Data, largeDocument: Bool = false,
                        crop: PSDCrop? = nil) throws -> [UInt8] {
         guard width > 0, height > 0 else { return [] }

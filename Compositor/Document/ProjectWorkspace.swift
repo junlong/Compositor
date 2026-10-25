@@ -1,6 +1,8 @@
 import AppKit
-import Observation
+import Combine
 import UniformTypeIdentifiers
+
+
 
 @MainActor
 final class ProjectTab: Identifiable {
@@ -17,12 +19,19 @@ final class ProjectTab: Identifiable {
     }
 }
 
-@MainActor @Observable
-final class ProjectWorkspace {
-    private(set) var tabs: [ProjectTab] = []
-    private(set) var selectedID: UUID
-    var isManaging = false
-    @ObservationIgnored weak var window: NSWindow?
+
+
+@MainActor
+final class ProjectWorkspace: ObservableObject {
+    /// One workspace for the app: the SwiftUI App and its menu commands observe it, and through it the current
+    /// session, so menu enabled states follow the document.
+    static let shared = ProjectWorkspace()
+
+    @Published private(set) var tabs: [ProjectTab] = []
+    @Published private(set) var selectedID: UUID { didSet { observeCurrentSession() } }
+    private var sessionObserver: AnyCancellable?
+    @Published var isManaging = false
+    weak var window: NSWindow?
     var current: ProjectTab { tabs.first { $0.id == selectedID } ?? tabs[0] }
     var canSwitch: Bool {
         let s = current.session
@@ -35,6 +44,15 @@ final class ProjectWorkspace {
         first.session.skipsInitialClipboardCanvasSize = true
         tabs = [first]; selectedID = first.id
         first.controller.workspace = self
+        observeCurrentSession()
+    }
+
+    /// Forwards the current session's changes through the workspace, so a menu or a tab strip that observes the
+    /// workspace also re-reads the session. Observation did this tracking automatically; ObservableObject does not.
+    private func observeCurrentSession() {
+        sessionObserver = current.session.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
     }
     /// A new tab's name: "Untitled" if no tab shows it, otherwise the lowest "Untitled N" free, as Finder and Safari
     /// number them. Counting up for ever, closing the last tab made Untitled 2, then 3, and on.
@@ -62,16 +80,16 @@ final class ProjectWorkspace {
         tab.session.opensArtboard = { [weak self, weak tab] document, name in
             guard let self, let tab else { return }
             let target: ProjectTab
-            if tab.session.document == nil, tabs.contains(where: { $0 === tab }) {
+            if tab.session.document == nil, self.tabs.contains(where: { $0 === tab }) {
                 target = tab
                 target.defaultName = name
             } else {
                 target = ProjectTab(name: name)
-                target.controller.workspace = self; target.controller.window = window
-                attach(target)
-                tabs.append(target)
+                target.controller.workspace = self; target.controller.window = self.window
+                self.attach(target)
+                self.tabs.append(target)
             }
-            selectedID = target.id
+            self.selectedID = target.id
             await target.session.importArtboard(document, named: name)
         }
     }
@@ -108,7 +126,8 @@ final class ProjectWorkspace {
             panel.allowedContentTypes = [.compositorProject]
             panel.allowsMultipleSelection = true
             panel.treatsFilePackagesAsDirectories = false
-            let response = if let window { await panel.beginSheetModal(for: window) } else { await panel.begin() }
+            let response: NSApplication.ModalResponse
+            if let window { response = await panel.beginSheetModal(for: window) } else { response = await panel.begin() }
             guard response == .OK else { return false }
             urls = panel.urls
         }
@@ -192,7 +211,7 @@ final class ProjectWorkspace {
         defer { for (url, scoped) in files where scoped { url.stopAccessingSecurityScopedResource() } }
         while !canSwitch {
             if Task.isCancelled { return }
-            try? await Task.sleep(for: .milliseconds(30))
+            try? await Task.sleep(nanoseconds: UInt64(30) * 1_000_000)
         }
         isManaging = true; defer { isManaging = false }
         for url in urls {

@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// File › Export As…: the flattened canvas, or frame timelines driving it, sized and previewed as written.
+@MainActor
 struct ExportAsSheet: View {
     let raster: ExportRaster
     /// The same flattened at 16 bits a channel, when the document has a 16-bit layer to keep.
@@ -14,7 +15,7 @@ struct ExportAsSheet: View {
     private var formats: [ExportFormat] {
         ExportFormat.allCases.filter { ($0 != .exr || hdrRaster != nil) && (($0 != .channelPack && $0 != .gif) || snapshot != nil) }
     }
-    let session: EditorSession
+    @ObservedObject var session: EditorSession
     let finish: ((data: Data, format: ExportFormat)?) -> Void
     @State private var format: ExportFormat
     @State private var options: JPEGOptions
@@ -24,7 +25,7 @@ struct ExportAsSheet: View {
     /// Channel Pack's red, green, blue and alpha, in that order.
     @State private var channels: [ChannelPack.Source]
     /// Each document's last Channel Pack choices, while the app is open.
-    @MainActor private static var channelChoices: [UUID: [ChannelPack.Source]] = [:]
+    private static var channelChoices: [UUID: [ChannelPack.Source]] = [:]
     /// JPEG's quality from the last export, which the next one starts from.
     private static let qualityKey = "jpegExportQuality"
 
@@ -36,7 +37,7 @@ struct ExportAsSheet: View {
         self.hdrRaster = hdrRaster
         let layers = snapshot?.manifest.layers ?? []
         let remembered = snapshot.flatMap { Self.channelChoices[$0.manifest.documentID] }?
-            .filter { if case .layer(let id) = $0 { layers.contains { $0.id == id } } else { true } }
+            .filter { if case .layer(let id) = $0 { return layers.contains { $0.id == id } } else { return true } }
         _channels = State(initialValue: remembered?.count == 4 ? remembered!
                           : ChannelPack.Channel.allCases.map { ChannelPack.defaultSource(for: $0, in: layers) })
         self.session = session
@@ -98,168 +99,205 @@ struct ExportAsSheet: View {
         zoom ?? JPEGPreview.fitZoom(width: width, height: height, in: JPEGPreview.frame, displayScale: displayScale)
     }
 
+    @ViewBuilder private var headerRow: some View {
+        HStack(spacing: 8) {
+            Text("Export As").font(.title2.bold())
+            Spacer()
+            if format == .gif, let result, result.durations.count > 1 {
+                Button {
+                    if !isGIFPreviewPlaying, gifPreviewIndex == result.durations.count - 1, !gifOptions.loopsForever {
+                        gifPreviewIndex = 0
+                        gifPreviewImage = result.preview
+                    }
+                    isGIFPreviewPlaying.toggle()
+                } label: { Image(systemName: isGIFPreviewPlaying ? "pause.fill" : "play.fill").foregroundStyle(.white) }
+                    .disabled(!isReady)
+                    .help(isGIFPreviewPlaying ? "Pause the animation preview." : "Play the animation preview.")
+                    .accessibilityLabel(isGIFPreviewPlaying ? "Pause animation preview" : "Play animation preview")
+            }
+            Button("Fit") { zoom = nil }.disabled(zoom == nil)
+                .help("Show the whole image (⌘0)")
+            Button { zoomBy(1) } label: { Image(systemName: "plus.magnifyingglass") }
+                .disabled(JPEGPreview.step(from: shownZoom, in: 1) == nil)
+                .help("Zoom in (⌘+), now \(percent). At 100% each pixel of the export is one pixel of the screen")
+            Button { zoomBy(-1) } label: { Image(systemName: "minus.magnifyingglass") }
+                .disabled(JPEGPreview.step(from: shownZoom, in: -1) == nil)
+                .help("Zoom out (⌘−), now \(percent)")
+        }
+        .padding(.bottom, -8)
+    }
+
+    @ViewBuilder private var previewArea: some View {
+        ZStack {
+            Color(white: 0.12)
+            if let result {
+                JPEGPreview(image: result.settings.format == .gif ? gifPreviewImage ?? result.preview : result.preview,
+                            pixelWidth: result.settings.width, pixelHeight: result.settings.height, zoom: $zoom)
+            }
+            if !isReady && error == nil {
+                ProgressView().padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+            }
+        }.frame(width: JPEGPreview.frame.width, height: JPEGPreview.frame.height).clipped()
+            .help("Enabled masks apply here, as on the canvas. Drag or scroll to move around; double-click switches between Fit and 100%.")
+    }
+
+    @ViewBuilder private var settingsArea: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            settingsFormatRow
+            settingsSizeRow
+            if format == .jpeg { settingsQualityRow }
+            if format == .png, deepRaster != nil { settingsDepthRow }
+            if takesCMYK { settingsColorRow }
+            if format == .channelPack {
+                ForEach(Array(ChannelPack.Channel.allCases.enumerated()), id: \.offset) { index, channel in
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text(channel.rawValue).frame(width: 80, alignment: .leading)
+                        channelPicker(index, channel: channel)
+                    }
+                }
+            }
+            if format == .pdf { settingsPageRow }
+            if format == .gif { settingsGIFRows }
+            if format == .jpeg || format == .pdf || (format == .tiff && cmyk) || (format == .gif && !gifOptions.keepsTransparency) {
+                settingsBackgroundRow
+            }
+        }
+    }
+
+    @ViewBuilder private var settingsFormatRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("Format").frame(width: 80, alignment: .leading)
+            // The everyday formats side by side, JPEG first; the rest (PDF, and EXR with an HDR layer) in a menu beside them,
+            // which takes the chosen one's name.
+            HStack(spacing: 12) {
+                Picker("Format", selection: $format) {
+                    ForEach([ExportFormat.jpeg, .png], id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented).labelsHidden().fixedSize()
+                moreFormats
+            }
+        }
+    }
+
+    @ViewBuilder private var settingsSizeRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("Size").frame(width: 80, alignment: .leading)
+            HStack(spacing: 6) {
+                sizeField(width, set: setWidth).help("Width in pixels; the height follows, keeping the proportions")
+                Text("×").foregroundStyle(.secondary)
+                sizeField(height, set: setHeight).help("Height in pixels; the width follows, keeping the proportions")
+                Text("px").foregroundStyle(.secondary)
+                Menu("\(scalePercent)%") {
+                    ForEach([25, 50, 75, 100, 200], id: \.self) { percent in
+                        Button("\(percent)%") { setScale(Double(percent) / 100) }
+                    }
+                }
+                .fixedSize().help("Scale the export: the document stays as it is")
+            }
+        }
+    }
+
+    @ViewBuilder private var settingsQualityRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("Quality").frame(width: 80, alignment: .leading)
+            HStack {
+                Slider(value: $options.quality, in: 0...1, step: 0.01).frame(width: 300)
+                Text("\(Int((options.quality * 100).rounded()))%").monospacedDigit().frame(width: 45, alignment: .trailing)
+            }
+        }
+    }
+
+    @ViewBuilder private var settingsDepthRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("Depth").frame(width: 80, alignment: .leading)
+            Toggle("16 bits per channel", isOn: $sixteenBit)
+                .help("Keep the 16-bit layers' full precision, in a file about twice the size")
+        }
+    }
+
+    @ViewBuilder private var settingsColorRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("Color").frame(width: 80, alignment: .leading)
+            HStack(spacing: 10) {
+                colorMenu
+                // CMYK goes through View › CMYK › Profile's profile, named under the settings; a printer's own
+                // can be loaded here too.
+                if cmyk {
+                    Button("Load Profile…") { loadProfile() }
+                        .help("Use a CMYK ICC profile, such as the one your printer gave you")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var settingsPageRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("Page").frame(width: 80, alignment: .leading)
+            Text(pageSize).foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder private var settingsGIFRows: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("Loop").frame(width: 80, alignment: .leading)
+            Picker("Loop", selection: $gifOptions.loopsForever) {
+                Text("Forever").tag(true)
+                Text("Once").tag(false)
+            }.pickerStyle(.segmented).labelsHidden().fixedSize()
+                .disabled(!gifHasAnimation)
+        }
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("Transparency").frame(width: 80, alignment: .leading)
+            Toggle("Keep transparent areas", isOn: $gifOptions.keepsTransparency)
+                .help("GIF keeps fully transparent or opaque pixels; soft edges use a 50% threshold.")
+        }
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("Frames").frame(width: 80, alignment: .leading)
+            Text(gifSummary).foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder private var settingsBackgroundRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("Background").frame(width: 80, alignment: .leading)
+            DialogColorSwatch(title: "Export Background", color: format == .gif ? gifMatte : matte, session: session)
+                .help("Color that fills transparent areas")
+        }
+    }
+
+    @ViewBuilder private var footerArea: some View {
+        HStack(spacing: 12) {
+            Text(format == .channelPack ? "Each channel from a layer, read as grayscale · PNG"
+                 : format == .gif ? "Up to 256 colors · sRGB" : format == .exr ? "Brighter than white kept · Transparency kept"
+                 : takesCMYK && cmyk ? "CMYK – \(profile?.name ?? "No profile")"
+                 : format == .png || format == .tiff ? "Transparency kept · sRGB" : "sRGB")
+                .foregroundStyle(.secondary)
+            Spacer()
+            if isReady, let result {
+                Text(ByteCountFormatter.string(fromByteCount: Int64(result.data.count), countStyle: .file)).monospacedDigit()
+            } else if error == nil {
+                Text(format == .gif ? gifProgress.map { "Encoding frame \(min($0.completed + 1, $0.total)) of \($0.total)…" } ?? "Updating…" : "Updating…")
+                    .foregroundStyle(.secondary).monospacedDigit()
+            }
+            Button("Cancel") { DialogColorSwatch.closePicker(session); finish(nil) }.configuredNativeShortcut(.escape)
+            Button("Export…") {
+                DialogColorSwatch.closePicker(session)
+                if format == .jpeg { UserDefaults.standard.set(options.quality, forKey: Self.qualityKey) }
+                if format == .channelPack, let snapshot { Self.channelChoices[snapshot.manifest.documentID] = channels }
+                if let result { finish((result.data, result.settings.format)) }
+            }
+                .configuredNativeShortcut(.return)
+                .disabled(!isReady)
+        }
+    }
+
     var body: some View { sheet.roundedControls() }
     @ViewBuilder private var sheet: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 8) {
-                Text("Export As").font(.title2.bold())
-                Spacer()
-                if format == .gif, let result, result.durations.count > 1 {
-                    Button {
-                        if !isGIFPreviewPlaying, gifPreviewIndex == result.durations.count - 1, !gifOptions.loopsForever {
-                            gifPreviewIndex = 0
-                            gifPreviewImage = result.preview
-                        }
-                        isGIFPreviewPlaying.toggle()
-                    } label: { Image(systemName: isGIFPreviewPlaying ? "pause.fill" : "play.fill").foregroundStyle(.white) }
-                        .disabled(!isReady)
-                        .help(isGIFPreviewPlaying ? "Pause the animation preview." : "Play the animation preview.")
-                        .accessibilityLabel(isGIFPreviewPlaying ? "Pause animation preview" : "Play animation preview")
-                }
-                Button("Fit") { zoom = nil }.disabled(zoom == nil)
-                    .help("Show the whole image (⌘0)")
-                Button { zoomBy(1) } label: { Image(systemName: "plus.magnifyingglass") }
-                    .disabled(JPEGPreview.step(from: shownZoom, in: 1) == nil)
-                    .help("Zoom in (⌘+), now \(percent). At 100% each pixel of the export is one pixel of the screen")
-                Button { zoomBy(-1) } label: { Image(systemName: "minus.magnifyingglass") }
-                    .disabled(JPEGPreview.step(from: shownZoom, in: -1) == nil)
-                    .help("Zoom out (⌘−), now \(percent)")
-            }
-            .padding(.bottom, -8)
-            ZStack {
-                Color(white: 0.12)
-                if let result {
-                    JPEGPreview(image: result.settings.format == .gif ? gifPreviewImage ?? result.preview : result.preview,
-                                pixelWidth: result.settings.width, pixelHeight: result.settings.height, zoom: $zoom)
-                }
-                if !isReady && error == nil {
-                    ProgressView().padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
-                }
-            }.frame(width: JPEGPreview.frame.width, height: JPEGPreview.frame.height).clipped()
-                .help("Enabled masks apply here, as on the canvas. Drag or scroll to move around; double-click switches between Fit and 100%.")
-            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 12) {
-                GridRow {
-                    Text("Format")
-                    // The everyday formats side by side, JPEG first; the rest (PDF, and EXR with an HDR layer) in a menu beside them,
-                    // which takes the chosen one's name.
-                    HStack(spacing: 12) {
-                        Picker("Format", selection: $format) {
-                            ForEach([ExportFormat.jpeg, .png], id: \.self) { Text($0.rawValue).tag($0) }
-                        }
-                        .pickerStyle(.segmented).labelsHidden().fixedSize()
-                        moreFormats
-                    }
-                }
-                GridRow {
-                    Text("Size")
-                    HStack(spacing: 6) {
-                        sizeField(width, set: setWidth).help("Width in pixels; the height follows, keeping the proportions")
-                        Text("×").foregroundStyle(.secondary)
-                        sizeField(height, set: setHeight).help("Height in pixels; the width follows, keeping the proportions")
-                        Text("px").foregroundStyle(.secondary)
-                        Menu("\(scalePercent)%") {
-                            ForEach([25, 50, 75, 100, 200], id: \.self) { percent in
-                                Button("\(percent)%") { setScale(Double(percent) / 100) }
-                            }
-                        }
-                        .fixedSize().help("Scale the export: the document stays as it is")
-                    }
-                }
-                if format == .jpeg {
-                    GridRow {
-                        Text("Quality")
-                        HStack {
-                            Slider(value: $options.quality, in: 0...1, step: 0.01).frame(width: 300)
-                            Text("\(Int((options.quality * 100).rounded()))%").monospacedDigit().frame(width: 45, alignment: .trailing)
-                        }
-                    }
-                }
-                if format == .png, deepRaster != nil {
-                    GridRow {
-                        Text("Depth")
-                        Toggle("16 bits per channel", isOn: $sixteenBit)
-                            .help("Keep the 16-bit layers' full precision, in a file about twice the size")
-                    }
-                }
-                if takesCMYK {
-                    GridRow {
-                        Text("Color")
-                        HStack(spacing: 10) {
-                            colorMenu
-                            // CMYK goes through View › CMYK › Profile's profile, named under the settings; a printer's own
-                            // can be loaded here too.
-                            if cmyk {
-                                Button("Load Profile…") { loadProfile() }
-                                    .help("Use a CMYK ICC profile, such as the one your printer gave you")
-                            }
-                        }
-                    }
-                }
-                if format == .channelPack {
-                    ForEach(Array(ChannelPack.Channel.allCases.enumerated()), id: \.offset) { index, channel in
-                        GridRow {
-                            Text(channel.rawValue)
-                            channelPicker(index, channel: channel)
-                        }
-                    }
-                }
-                if format == .pdf {
-                    GridRow {
-                        Text("Page")
-                        Text(pageSize).foregroundStyle(.secondary)
-                    }
-                }
-                if format == .gif {
-                    GridRow {
-                        Text("Loop")
-                        Picker("Loop", selection: $gifOptions.loopsForever) {
-                            Text("Forever").tag(true)
-                            Text("Once").tag(false)
-                        }.pickerStyle(.segmented).labelsHidden().fixedSize()
-                            .disabled(!gifHasAnimation)
-                    }
-                    GridRow {
-                        Text("Transparency")
-                        Toggle("Keep transparent areas", isOn: $gifOptions.keepsTransparency)
-                            .help("GIF keeps fully transparent or opaque pixels; soft edges use a 50% threshold.")
-                    }
-                    GridRow {
-                        Text("Frames")
-                        Text(gifSummary).foregroundStyle(.secondary)
-                    }
-                }
-                // JPEG has no transparency, and a PDF's page shows through it, so both fill it with a color.
-                if format == .jpeg || format == .pdf || (format == .tiff && cmyk) || (format == .gif && !gifOptions.keepsTransparency) {
-                    GridRow {
-                        Text("Background")
-                        DialogColorSwatch(title: "Export Background", color: format == .gif ? gifMatte : matte, session: session)
-                            .help("Color that fills transparent areas")
-                    }
-                }
-            }
-            HStack(spacing: 12) {
-                Text(format == .channelPack ? "Each channel from a layer, read as grayscale · PNG"
-                     : format == .gif ? "Up to 256 colors · sRGB" : format == .exr ? "Brighter than white kept · Transparency kept"
-                     : takesCMYK && cmyk ? "CMYK – \(profile?.name ?? "No profile")"
-                     : format == .png || format == .tiff ? "Transparency kept · sRGB" : "sRGB")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                if isReady, let result {
-                    Text(ByteCountFormatter.string(fromByteCount: Int64(result.data.count), countStyle: .file)).monospacedDigit()
-                } else if error == nil {
-                    Text(format == .gif ? gifProgress.map { "Encoding frame \(min($0.completed + 1, $0.total)) of \($0.total)…" } ?? "Updating…" : "Updating…")
-                        .foregroundStyle(.secondary).monospacedDigit()
-                }
-                Button("Cancel") { DialogColorSwatch.closePicker(session); finish(nil) }.configuredNativeShortcut(.escape)
-                Button("Export…") {
-                    DialogColorSwatch.closePicker(session)
-                    if format == .jpeg { UserDefaults.standard.set(options.quality, forKey: Self.qualityKey) }
-                    if format == .channelPack, let snapshot { Self.channelChoices[snapshot.manifest.documentID] = channels }
-                    if let result { finish((result.data, result.settings.format)) }
-                }
-                    .configuredNativeShortcut(.return)
-                    .disabled(!isReady)
-            }
+            headerRow
+            previewArea
+            settingsArea
+            footerArea
             if let error { Text(error).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true).frame(maxWidth: JPEGPreview.frame.width, alignment: .leading) }
         }
         .padding(24)
@@ -275,13 +313,13 @@ struct ExportAsSheet: View {
             }
         }
         .onDisappear { session.previewZoom = nil }
-        .onChange(of: format) { setScale(Double(width) / Double(raster.image.width)) }
+        .onChange(of: format) { _ in setScale(Double(width) / Double(raster.image.width)) }
         .task(id: settings) {
             let requested = settings
             error = nil
             gifProgress = nil
             do {
-                try await Task.sleep(for: .milliseconds(200))
+                try await Task.sleep(nanoseconds: UInt64(200) * 1_000_000)
                 if requested.format == .gif, let snapshot {
                     let encoded = try await GIFExporter.shared.encode(snapshot, width: requested.width, height: requested.height,
                         options: requested.gifOptions) { completed, total in
@@ -381,7 +419,7 @@ struct ExportAsSheet: View {
             Toggle("RGB", isOn: Binding(get: { !cmyk }, set: { if $0 { cmyk = false } }))
             Toggle("CMYK", isOn: Binding(get: { cmyk }, set: { if $0 { cmyk = true } }))
         }
-        .menuStyle(.button).buttonStyle(.bordered).fixedSize()
+        .menuStyle(.borderlessButton).buttonStyle(.bordered).fixedSize()
         .help("CMYK writes a printer's inks through the profile in View › CMYK › Profile")
     }
 
@@ -405,7 +443,7 @@ struct ExportAsSheet: View {
             }
             .pickerStyle(.inline).labelsHidden()
         }
-        .menuStyle(.button).fixedSize()
+        .menuStyle(.borderlessButton).fixedSize()
         .help("Other formats: TIFF, PDF and GIF\(others.contains(.exr) ? ", EXR to keep light brighter than white" : ""), and Channel Pack for game textures")
         if chosen { menu.buttonStyle(.borderedProminent) } else { menu.buttonStyle(.bordered) }
     }
@@ -463,6 +501,7 @@ struct ExportAsSheet: View {
 
 /// The export, fitted or zoomed (1 is 100%: one image pixel per screen pixel, as the canvas counts it), where it
 /// can be dragged or scrolled around. Double-click switches between Fit and 100%.
+@MainActor
 struct JPEGPreview: View {
     static let frame = CGSize(width: 560, height: 330)
     static let steps: [Double] = [0.25, 0.5, 1, 2, 4, 8]
@@ -472,16 +511,13 @@ struct JPEGPreview: View {
     let pixelHeight: Int
     @Binding var zoom: Double?
     @Environment(\.displayScale) private var displayScale
-    @State private var position = ScrollPosition()
-    @State private var offset = CGPoint.zero
-    @State private var dragStart: CGPoint?
 
     /// The zoom at which the whole image fits `frame`.
     static func fitZoom(width: Int, height: Int, in frame: CGSize, displayScale: CGFloat) -> Double {
         let points = CGSize(width: CGFloat(width) / max(1, displayScale), height: CGFloat(height) / max(1, displayScale))
         return Double(min(frame.width / points.width, frame.height / points.height))
     }
-    /// The next zoom step past `zoom` in `direction` (1 in, −1 out), or nil at the end.
+    /// The next zoom step past `zoom` in `direction` (1 in, -1 out), or nil at the end.
     static func step(from zoom: Double, in direction: Int) -> Double? {
         direction > 0 ? steps.first { $0 > zoom * 1.001 } : steps.last { $0 < zoom * 0.999 }
     }
@@ -489,28 +525,15 @@ struct JPEGPreview: View {
     var body: some View {
         GeometryReader { geometry in
             if let zoom {
-                let size = shownSize(zoom)
-                ScrollView([.horizontal, .vertical]) {
-                    // Nearest-neighbor from 100% up, so each pixel of the JPEG and its artifacts shows as it is.
-                    Image(decorative: image, scale: 1).resizable().interpolation(zoom >= 1 ? .none : .high)
-                        .frame(width: size.width, height: size.height)
-                        .background { Self.checkerboard }
-                        .frame(minWidth: geometry.size.width, minHeight: geometry.size.height)
-                }
-                .scrollIndicators(.visible)
-                .scrollPosition($position)
-                .onScrollGeometryChange(for: CGPoint.self, of: { $0.contentOffset }) { _, new in offset = new }
-                .gesture(DragGesture(minimumDistance: 1)
-                    .onChanged { drag in
-                        let start = dragStart ?? offset
-                        dragStart = start
-                        position.scrollTo(point: CGPoint(x: start.x - drag.translation.width, y: start.y - drag.translation.height))
-                    }
-                    .onEnded { _ in dragStart = nil })
-                .onTapGesture(count: 2) { self.zoom = nil }
-                .onAppear { keepCentered(from: nil, to: zoom, in: geometry.size) }
-                .onChange(of: zoom) { old, new in keepCentered(from: old, to: new, in: geometry.size) }
-                .pointerStyle(dragStart == nil ? .grabIdle : .grabActive)
+                // macOS 14's ScrollPosition and onScrollGeometryChange have no macOS 12 equivalent, so the zoomed
+                // preview is an NSScrollView that owns its own offset and can also be dragged.
+                ZoomedExportPreview(
+                    image: image,
+                    pointSize: CGSize(width: CGFloat(pixelWidth) / max(1, displayScale),
+                                      height: CGFloat(pixelHeight) / max(1, displayScale)),
+                    zoom: zoom,
+                    onToggle: { self.zoom = nil })
+                    .frame(width: geometry.size.width, height: geometry.size.height)
             } else {
                 Image(decorative: image, scale: 1).resizable().interpolation(.high).scaledToFit()
                     .background { Self.checkerboard }
@@ -534,24 +557,108 @@ struct JPEGPreview: View {
         }
         return tile
     }()).resizable(resizingMode: .tile)
+}
 
-    /// The image's size on screen at `zoom`, in points.
-    private func shownSize(_ zoom: Double) -> CGSize {
-        CGSize(width: CGFloat(pixelWidth) / max(1, displayScale) * zoom, height: CGFloat(pixelHeight) / max(1, displayScale) * zoom)
+/// The zoomed export: an NSScrollView around a document view that draws the image (nearest-neighbor at 100% and
+/// above) over the checkerboard. Dragging pans; double-click returns to Fit. Zooming keeps the middle of the
+/// viewport on the same part of the image, as the canvas does.
+@MainActor
+private struct ZoomedExportPreview: NSViewRepresentable {
+    let image: CGImage
+    /// The image's size at 100%, in points.
+    let pointSize: CGSize
+    let zoom: Double
+    let onToggle: () -> Void
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scroll = NSScrollView()
+        scroll.hasHorizontalScroller = true
+        scroll.hasVerticalScroller = true
+        scroll.autohidesScrollers = false
+        scroll.drawsBackground = false
+        scroll.borderType = .noBorder
+        scroll.documentView = ZoomedExportDocumentView()
+        return scroll
     }
 
-    /// Zooming keeps the middle of the view on the same part of the image; coming from Fit, it starts at the center.
-    private func keepCentered(from old: Double?, to new: Double?, in view: CGSize) {
-        guard let new else { return }
-        let size = shownSize(new)
-        var middle = CGPoint(x: size.width / 2, y: size.height / 2)
-        if let old {
-            let before = shownSize(old)
-            let fx = before.width > 0 ? (offset.x + min(view.width, before.width) / 2) / before.width : 0.5
-            let fy = before.height > 0 ? (offset.y + min(view.height, before.height) / 2) / before.height : 0.5
-            middle = CGPoint(x: fx * size.width, y: fy * size.height)
+    func updateNSView(_ scroll: NSScrollView, context: Context) {
+        guard let document = scroll.documentView as? ZoomedExportDocumentView else { return }
+        document.image = image
+        document.onToggle = onToggle
+        let target = CGSize(width: pointSize.width * zoom, height: pointSize.height * zoom)
+        let old = document.frame.size
+        guard abs(document.currentZoom - zoom) > 1e-9 || old != target else { return }
+
+        let clip = scroll.contentView
+        let visible = clip.bounds.size
+        var fraction = CGPoint(x: 0.5, y: 0.5)
+        if old.width > 1, old.height > 1 {
+            fraction = CGPoint(x: (clip.bounds.origin.x + visible.width / 2) / old.width,
+                               y: (clip.bounds.origin.y + visible.height / 2) / old.height)
         }
-        position.scrollTo(point: CGPoint(x: min(max(0, middle.x - view.width / 2), max(0, size.width - view.width)),
-                                         y: min(max(0, middle.y - view.height / 2), max(0, size.height - view.height))))
+        document.currentZoom = zoom
+        document.setFrameSize(target)
+        document.needsDisplay = true
+        let x = min(max(0, fraction.x * target.width - visible.width / 2), max(0, target.width - visible.width))
+        let y = min(max(0, fraction.y * target.height - visible.height / 2), max(0, target.height - visible.height))
+        clip.scroll(to: NSPoint(x: x, y: y))
+        scroll.reflectScrolledClipView(clip)
+    }
+}
+
+private final class ZoomedExportDocumentView: NSView {
+    var image: CGImage?
+    var onToggle: (() -> Void)?
+    var currentZoom: Double = 0
+    private var dragOrigin: NSPoint?
+    private var startOrigin = NSPoint.zero
+
+    override var isFlipped: Bool { true }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let square: CGFloat = 10
+        NSColor(white: 0.30, alpha: 1).setFill()
+        bounds.fill()
+        NSColor(white: 0.35, alpha: 1).setFill()
+        var y = floor(dirtyRect.minY / square) * square
+        while y < dirtyRect.maxY {
+            var x = floor(dirtyRect.minX / square) * square
+            while x < dirtyRect.maxX {
+                if (Int(x / square) + Int(y / square)) % 2 == 0 {
+                    NSRect(x: x, y: y, width: square, height: square).fill()
+                }
+                x += square
+            }
+            y += square
+        }
+        guard let image, let context = NSGraphicsContext.current?.cgContext else { return }
+        context.saveGState()
+        // Nearest-neighbor from 100% up, so each pixel of the export and its artifacts shows as it is.
+        context.interpolationQuality = bounds.width >= CGFloat(image.width) ? .none : .high
+        context.translateBy(x: 0, y: bounds.height)
+        context.scaleBy(x: 1, y: -1)
+        context.draw(image, in: CGRect(origin: .zero, size: bounds.size))
+        context.restoreGState()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 {
+            onToggle?()
+            return
+        }
+        dragOrigin = convert(event.locationInWindow, from: nil)
+        startOrigin = enclosingScrollView?.contentView.bounds.origin ?? .zero
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let dragOrigin, let clip = enclosingScrollView?.contentView else { return }
+        let point = convert(event.locationInWindow, from: nil)
+        clip.scroll(to: NSPoint(x: startOrigin.x - (point.x - dragOrigin.x),
+                                y: startOrigin.y - (point.y - dragOrigin.y)))
+        enclosingScrollView?.reflectScrolledClipView(clip)
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .openHand)
     }
 }

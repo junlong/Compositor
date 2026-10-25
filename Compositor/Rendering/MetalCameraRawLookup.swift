@@ -1,10 +1,10 @@
 import Foundation
 import Metal
-import Synchronization
+
 
 /// The existing composed color table on Metal. Values close to an 8-bit rounding boundary are repaired by
 /// the CPU's double-precision lookup, so a precision difference cannot accumulate through later effects.
-nonisolated final class MetalCameraRawLookup: Sendable {
+final class MetalCameraRawLookup: Sendable {
     static let shared: MetalCameraRawLookup? = try? MetalCameraRawLookup()
     static let minimumPixels = 8_000_001
     private let device: MTLDevice

@@ -8,7 +8,7 @@ import Foundation
 /// The engine dictionary inside `EngineData` supplies the font, size, color,
 /// tracking, leading and alignment. Anything this model cannot represent
 /// (vertical text, shear, uneven scale) stays a raster.
-nonisolated enum PSDText {
+enum PSDText {
     struct Source: Sendable {
         var style: LayerTextStyle
         var notes: [String]
@@ -92,7 +92,7 @@ nonisolated enum PSDText {
                       flipY: placed.flipY, anchorIsFrame: anchorIsFrame)
     }
 
-    @MainActor
+
     static func render(_ source: Source) throws -> (image: CGImage, transform: LayerTransform) {
         let image = try EditorSession.textImage(source.style)
         let size = CGSize(width: image.width, height: image.height)
@@ -234,9 +234,9 @@ nonisolated enum PSDText {
 
     private static func horizontalAnchor(_ style: LayerTextStyle, width: CGFloat) -> CGFloat {
         switch style.alignment {
-        case .left: LayerTextStyle.padding
-        case .center: width / 2
-        case .right: width - LayerTextStyle.padding
+        case .left: return LayerTextStyle.padding
+        case .center: return width / 2
+        case .right: return width - LayerTextStyle.padding
         }
     }
 
@@ -277,7 +277,7 @@ nonisolated enum PSDText {
     }
 }
 
-private nonisolated enum Engine {
+private enum Engine {
     case number(Double)
     case bool(Bool)
     case string(String)
@@ -285,7 +285,7 @@ private nonisolated enum Engine {
     case array([Engine])
 }
 
-private nonisolated func walk(_ value: Engine?, _ keys: String...) -> Engine? {
+private func walk(_ value: Engine?, _ keys: String...) -> Engine? {
     var current = value
     for key in keys {
         guard case .dict(let items) = current, let next = items[key] else { return nil }
@@ -294,41 +294,41 @@ private nonisolated func walk(_ value: Engine?, _ keys: String...) -> Engine? {
     return current
 }
 
-private nonisolated func number(_ value: Engine?) -> Double? {
+private func number(_ value: Engine?) -> Double? {
     if case .number(let number) = value { return number }
     return nil
 }
 
-private nonisolated func bool(_ value: Engine?) -> Bool? {
+private func bool(_ value: Engine?) -> Bool? {
     if case .bool(let flag) = value { return flag }
     return nil
 }
 
-private nonisolated func string(_ value: Engine?) -> String? {
+private func string(_ value: Engine?) -> String? {
     if case .string(let text) = value { return text }
     return nil
 }
 
-private nonisolated func array(_ value: Engine?) -> [Engine] {
+private func array(_ value: Engine?) -> [Engine] {
     if case .array(let items) = value { return items }
     return []
 }
 
 /// Photoshop's text-engine dictionary: a small PostScript-like subset (`<< >>`, arrays, names, numbers, strings).
-private nonisolated func engineValue(_ data: Data) -> Engine? {
+private func engineValue(_ data: Data) -> Engine? {
     if let dict = dictionary(in: data, at: 0) { return dict }
     guard let start = data.firstRange(of: Data("<<".utf8))?.lowerBound, start > 0 else { return nil }
     return dictionary(in: data, at: start)
 }
 
-private nonisolated func dictionary(in data: Data, at start: Int) -> Engine? {
+private func dictionary(in data: Data, at start: Int) -> Engine? {
     var cursor = EngineCursor(data: data)
     cursor.index = start
     guard case .dict(let items) = cursor.parseValue() else { return nil }
     return .dict(items)
 }
 
-private nonisolated struct EngineCursor {
+private struct EngineCursor {
     let bytes: [UInt8]
     var index = 0
 
@@ -510,7 +510,7 @@ private nonisolated struct EngineCursor {
     }
 }
 
-private nonisolated enum DescriptorValue {
+private enum DescriptorValue {
     case text(String)
     case number(Double)
     case enumeration(String)
@@ -519,7 +519,7 @@ private nonisolated enum DescriptorValue {
     case list([DescriptorValue])
 }
 
-private nonisolated extension Dictionary where Key == String, Value == DescriptorValue {
+private extension Dictionary where Key == String, Value == DescriptorValue {
     func string(_ key: String) -> String? {
         if case .text(let text) = self[key] { return text }
         return nil
@@ -545,7 +545,7 @@ private nonisolated extension Dictionary where Key == String, Value == Descripto
 }
 
 /// Descriptor walker from the same specification (class and keys are length-prefixed, or 4 bytes when the length is 0).
-private nonisolated struct Reader {
+private struct Reader {
     let data: Data
     var offset = 0
     var remaining: Int { data.count - offset }

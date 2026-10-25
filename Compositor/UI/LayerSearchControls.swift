@@ -9,33 +9,33 @@ enum LayerType: String, CaseIterable {
 extension LayerType {
     var titleKey: LocalizedStringKey {
         switch self {
-        case .image: "Images"
-        case .shape: "Shapes"
-        case .text: "Text"
-        case .folder: "Folders"
-        case .adjustment: "Adjustments"
-        case .selected: "Selected"
+        case .image: return "Images"
+        case .shape: return "Shapes"
+        case .text: return "Text"
+        case .folder: return "Folders"
+        case .adjustment: return "Adjustments"
+        case .selected: return "Selected"
         }
     }
     var systemImageName: String {
         switch self {
-        case .image: "photo"
-        case .shape: "square.on.circle"
-        case .text: "character"
-        case .folder: "folder"
-        case .adjustment: "circle.righthalf.filled"
-        case .selected: "checkmark.circle"
+        case .image: return "photo"
+        case .shape: return "square.on.circle"
+        case .text: return "character"
+        case .folder: return "folder"
+        case .adjustment: return "circle.righthalf.filled"
+        case .selected: return "checkmark.circle"
         }
     }
     /// VoiceOver's description of the type's toggle.
     var filterLabel: LocalizedStringKey {
         switch self {
-        case .image: "Filter to image layers"
-        case .shape: "Filter to shape layers"
-        case .text: "Filter to text layers"
-        case .folder: "Filter to folder layers"
-        case .adjustment: "Filter to adjustment layers"
-        case .selected: "Filter to the selected layers"
+        case .image: return "Filter to image layers"
+        case .shape: return "Filter to shape layers"
+        case .text: return "Filter to text layers"
+        case .folder: return "Filter to folder layers"
+        case .adjustment: return "Filter to adjustment layers"
+        case .selected: return "Filter to the selected layers"
         }
     }
     /// The toggle's stable identifier, cased to match "layerFilterAll".
@@ -100,8 +100,9 @@ extension EditorSession {
 /// The Layers panel's title row: "Layers", with a magnifier that turns the title into a search field for layer names
 /// (and itself into a close button), and a funnel that opens the type filter (blue while one is on). Escape on an
 /// empty search, or the close button, puts the title back.
+@MainActor
 struct LayersHeader: View {
-    @Bindable var session: EditorSession
+    @ObservedObject var session: EditorSession
     @State private var searching = false
     /// Whether the funnel's type-filter panel is open.
     @State private var isPresentingFilter = false
@@ -147,11 +148,12 @@ struct LayersHeader: View {
     /// The funnel's contents: All Layers reads as on while no toggle is on, and turning it on clears them.
     private var typeFilterPopover: some View {
         VStack(alignment: .leading) {
-            Toggle("All Layers", systemImage: "square.3.layers.3d", isOn: Binding(
+            Toggle(isOn: Binding(
                 get: { session.layerTypeFilter.isEmpty },
                 set: { on in if on { session.clearLayerTypeFilter() } }
-            ))
-            .labelReservedIconWidth(16)
+            )) {
+                Label("All Layers", systemImage: "square.3.layers.3d")
+            }
             .accessibilityIdentifier("layerFilterAll")
             Divider()
             ForEach(LayerType.allCases.filter { $0 != .selected }, id: \.self) { typeToggle($0) }
@@ -162,11 +164,12 @@ struct LayersHeader: View {
     }
 
     private func typeToggle(_ kind: LayerType) -> some View {
-        Toggle(kind.titleKey, systemImage: kind.systemImageName, isOn: Binding(
+        Toggle(isOn: Binding(
             get: { session.layerTypeFilter.contains(kind) },
             set: { on in if on { session.layerTypeFilter.insert(kind) } else { session.layerTypeFilter.remove(kind) } }
-        ))
-        .labelReservedIconWidth(16)
+        )) {
+            Label(kind.titleKey, systemImage: kind.systemImageName)
+        }
         .accessibilityLabel(kind.filterLabel)
         .accessibilityIdentifier(kind.accessibilityID)
     }
@@ -174,6 +177,7 @@ struct LayersHeader: View {
 
 /// The Layers panel's search field, styled as the font list's: a magnifier and plain text in a box with a thin accent
 /// border. It takes the keyboard when it appears; `end` runs once it's left empty, by Escape or a click elsewhere.
+@MainActor
 private struct LayerSearchField: View {
     @Binding var text: String
     var end: () -> Void
@@ -193,6 +197,7 @@ private struct LayerSearchField: View {
 }
 
 /// The field itself: plain text, no bezel, no focus ring and no clear button.
+@MainActor
 private struct PlainSearchText: NSViewRepresentable {
     @Binding var text: String
     var end: () -> Void
@@ -219,6 +224,8 @@ private struct PlainSearchText: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(text: $text, end: end) }
+
+    @MainActor
 
     final class Coordinator: NSObject, NSTextFieldDelegate {
         let text: Binding<String>

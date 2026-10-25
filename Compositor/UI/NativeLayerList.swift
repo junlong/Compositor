@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 /// Native mouse-down selection and drag tracking, without a double-click delay.
+@MainActor
 struct NativeLayerList: NSViewRepresentable {
     let session: EditorSession
     func makeCoordinator() -> Coordinator { Coordinator(session: session) }
@@ -40,6 +41,8 @@ struct NativeLayerList: NSViewRepresentable {
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         if let table = scroll.documentView as? NSTableView { context.coordinator.update(table) }
     }
+
+    @MainActor
 
     final class Coordinator: NSObject, NSTableViewDataSource, NSTableViewDelegate, NSMenuItemValidation {
         static let layerType = NSPasteboard.PasteboardType("com.compositor.layer-row")

@@ -5,6 +5,7 @@ enum CanvasRuler {
     static let thickness: CGFloat = 18
 }
 
+@MainActor
 struct CanvasRulerCorner: View {
     var body: some View {
         Rectangle()
@@ -20,6 +21,7 @@ struct CanvasRulerCorner: View {
     }
 }
 
+@MainActor
 struct CanvasRulerView: NSViewRepresentable {
     let session: EditorSession
     let axis: CanvasGuide.Axis

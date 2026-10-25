@@ -1,7 +1,7 @@
 import Foundation
 import CoreGraphics
 
-nonisolated struct ImageSizeOptions: Sendable {
+struct ImageSizeOptions: Sendable {
     var width: Int
     var height: Int
     var resolution: Double

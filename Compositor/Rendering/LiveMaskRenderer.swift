@@ -4,7 +4,7 @@ import CoreImage
 
 /// Per-render dependency cache. Coverage uses source alpha including its own masks,
 /// independent of source visibility and color. Only the current clipped region is allocated.
-nonisolated final class LiveMaskRenderer {
+final class LiveMaskRenderer {
     let bounds: CGRect
     let source: (UUID) -> UUID?
     let drawOwn: (UUID, CGContext) -> Void

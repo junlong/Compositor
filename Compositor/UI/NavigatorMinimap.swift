@@ -4,8 +4,9 @@ import SwiftUI
 /// The Navigator: a minimap in the canvas's top right corner, shown from 300% zoom, when the view is a small part of
 /// the document. The whole document in small, with a box in the accent color around what the canvas shows; clicking
 /// or dragging in it moves the view there. Its picture is redrawn a moment after edits settle, and only while it shows.
+@MainActor
 struct NavigatorMinimap: View {
-    @Bindable var session: EditorSession
+    @ObservedObject var session: EditorSession
     @State private var picture: CGImage?
 
     static let zoomShown: CGFloat = 3
@@ -53,7 +54,7 @@ struct NavigatorMinimap: View {
             .accessibilityHint("Click or drag to move the view")
             .task(id: RenderKey(document: session.document, revision: session.brushRevision)) {
                 // Edits settle first, so a stroke or a drag redraws the picture once, afterwards.
-                if picture != nil { try? await Task.sleep(for: .milliseconds(250)) }
+                if picture != nil { try? await Task.sleep(nanoseconds: UInt64(250) * 1_000_000) }
                 guard !Task.isCancelled else { return }
                 picture = session.navigatorImage(maxSide: Self.picturePixels)
             }

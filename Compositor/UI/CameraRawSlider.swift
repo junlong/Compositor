@@ -57,6 +57,7 @@ enum CameraRawSliderTrack {
 
 /// Camera Raw slider. A double-click on the knob restores the default. A gradient track, when set,
 /// replaces the system bar so the whole track shows the color, not only the side before the knob.
+@MainActor
 struct CameraRawSlider: NSViewRepresentable {
     var value: Double
     var range: ClosedRange<Double>
@@ -110,6 +111,7 @@ struct CameraRawSlider: NSViewRepresentable {
         }
     }
 
+    @MainActor
     final class Coordinator: NSObject {
         var onChange: (Double) -> Void
         var onReset: () -> Void

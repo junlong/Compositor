@@ -1,6 +1,6 @@
 import AppKit
 
-nonisolated enum WandSampleSize: Int, CaseIterable, Sendable {
+enum WandSampleSize: Int, CaseIterable, Sendable {
     case point, threeByThree, fiveByFive
     var title: String { ["Point Sample", "3 by 3 Average", "5 by 5 Average"][rawValue] }
     /// Pixels either side of the click that are averaged into the color to match.
@@ -8,7 +8,7 @@ nonisolated enum WandSampleSize: Int, CaseIterable, Sendable {
 }
 
 /// The Magic Wand's options-bar settings.
-nonisolated struct WandSettings: Equatable, Sendable {
+struct WandSettings: Equatable, Sendable {
     /// How far (0–255) each channel may differ from the sampled color and still be selected.
     var tolerance = 32
     var sampleSize = WandSampleSize.point
@@ -20,13 +20,13 @@ nonisolated struct WandSettings: Equatable, Sendable {
 
 /// Selects pixels similar to a clicked one. Matching and tracing run in C (`WandPixels.c`):
 /// in Swift they would crawl on a large canvas in an unoptimized build.
-nonisolated enum MagicWand {
+enum MagicWand {
     enum Failure: LocalizedError {
         case tooDetailed, memory
         var errorDescription: String? {
             switch self {
-            case .tooDetailed: "That selection is too detailed to outline. Try a different Tolerance, or turn on Contiguous."
-            case .memory: "There isn’t enough memory to make that selection."
+            case .tooDetailed: return "That selection is too detailed to outline. Try a different Tolerance, or turn on Contiguous."
+            case .memory: return "There isn’t enough memory to make that selection."
             }
         }
     }
@@ -80,13 +80,13 @@ nonisolated enum MagicWand {
     }
 }
 
-private nonisolated struct WandJob: @unchecked Sendable {
+private struct WandJob: @unchecked Sendable {
     let image: CGImage
     let point: CGPoint
     let settings: WandSettings
 }
 
-private nonisolated struct WandResult: @unchecked Sendable {
+private struct WandResult: @unchecked Sendable {
     let path: CGPath?
     let error: Error?
 }

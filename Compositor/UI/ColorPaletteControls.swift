@@ -1,40 +1,46 @@
 import SwiftUI
 import AppKit
 
+@MainActor
 struct ColorPaletteControls: View {
-    let session: EditorSession
+    @ObservedObject var session: EditorSession
     @State private var choosingMaskBackground: Bool?
     @State private var pickerPanel = ColorPickerPanelController()
     private let swatchSize: CGFloat = 24
     private let swatchOffset: CGFloat = 12
     var body: some View {
         ZStack(alignment: .topLeading) {
-            swatch(background: true).offset(x: swatchOffset, y: swatchOffset)
-            swatch(background: false)
-            Button { session.swapPaletteColors() } label: {
-                Image(systemName: "arrow.left.and.right")
-                    .font(.system(size: 9, weight: .medium))
-                    .rotationEffect(.degrees(45))
-                    .frame(width: 12, height: 12)
-                    .contentShape(Rectangle())
+            Group {
+
+                swatch(background: true).offset(x: swatchOffset, y: swatchOffset)
+                swatch(background: false)
+                Button { session.swapPaletteColors() } label: {
+                    Image(systemName: "arrow.left.and.right")
+                        .font(.system(size: 9, weight: .medium))
+                        .rotationEffect(.degrees(45))
+                        .frame(width: 12, height: 12)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .offset(x: swatchSize + 3, y: -3)
+                .help("Swap foreground and background (X)")
+                .accessibilityLabel("Swap colors")
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .offset(x: swatchSize + 3, y: -3)
-            .help("Swap foreground and background (X)")
-            .accessibilityLabel("Swap colors")
-            Button { session.resetPaletteColors() } label: {
-                Image(systemName: "arrow.counterclockwise")
-                    .font(.system(size: 7.5, weight: .medium))
-                    .frame(width: 12, height: 12)
-                    .contentShape(Rectangle())
+            Group {
+                Button { session.resetPaletteColors() } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 7.5, weight: .medium))
+                        .frame(width: 12, height: 12)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .offset(x: -1, y: swatchSize + 3)
+                .help("Default colors (D)")
+                .accessibilityLabel("Default colors")
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .offset(x: -1, y: swatchSize + 3)
-            .help("Default colors (D)")
-            .accessibilityLabel("Default colors")
-        }
+            }
         .frame(width: swatchSize + swatchOffset, height: swatchSize + swatchOffset, alignment: .topLeading)
         .disabled(!session.canEditPalette)
         .popover(isPresented: Binding(get: { choosingMaskBackground != nil }, set: { if !$0 { choosingMaskBackground = nil } })) {
@@ -46,11 +52,11 @@ struct ColorPaletteControls: View {
                 }
             }.padding(16)
         }
-        .onChange(of: session.colorPicker.map(ObjectIdentifier.init)) { _, _ in
+        .compatOnChange(of: session.colorPicker.map(ObjectIdentifier.init)) { _, _ in
             if let picker = session.colorPicker { pickerPanel.show(picker, session: session) }
             else { pickerPanel.close() }
         }
-        .onChange(of: session.isMaskSelected) { _, masked in
+        .compatOnChange(of: session.isMaskSelected) { _, masked in
             choosingMaskBackground = nil
             if masked { session.closeColorPicker(commit: false) }
         }

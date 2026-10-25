@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 /// Intercepts only close approval and forwards SwiftUI's other window callbacks.
+@MainActor
 struct ProjectWindowBridge: NSViewRepresentable {
     let controller: ProjectController
     func makeNSView(context: Context) -> ProjectWindowView { ProjectWindowView(controller: controller) }

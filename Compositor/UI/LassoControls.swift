@@ -1,89 +1,131 @@
 import SwiftUI
 
+@MainActor
 struct LassoControls: View {
-    @Bindable var session: EditorSession
+    @ObservedObject var session: EditorSession
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(session.tool == .marquee ? "Marquee" : session.tool == .wand ? "Magic" : "Lasso").font(ToolHeaderStyle.titleFont)
-            ScrollView(.horizontal) {
-                HStack(spacing: 12) {
-                    if session.tool == .marquee {
-                        Picker("Shape", selection: Binding(get: { session.marqueeKind }, set: { kind in
-                            session.cancelLasso()
-                            session.marqueeKind = kind
-                        })) {
-                            ForEach(LassoKind.marqueeChoices, id: \.self) { Text($0.rawValue).tag($0) }
-                        }
-                        .pickerStyle(.segmented).labelsHidden().fixedSize()
-                        .help("Press M to switch between Rectangle and Ellipse")
-                    }
-                    if session.tool == .wand {
-                        Picker("Mode", selection: Binding(get: { session.wandMode }, set: { mode in
-                            session.cancelLasso()
-                            session.wandMode = mode
-                        })) {
-                            ForEach(WandMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                        }
-                        .pickerStyle(.segmented).labelsHidden().fixedSize()
-                        .help("Press Tab to switch between Wand and Object")
-                    }
-                    if session.tool == .lasso {
-                        Picker("Lasso", selection: Binding(get: { session.lassoKind }, set: { kind in
-                            session.cancelLasso()
-                            session.lassoKind = kind
-                        })) {
-                            ForEach(LassoKind.lassoChoices, id: \.self) { Text($0.rawValue).tag($0) }
-                        }
-                        .pickerStyle(.segmented).labelsHidden().fixedSize()
-                        .help("Press L to switch between Freehand and Polygonal")
-                    }
-                    // Shows held Shift/Option (or an outline's mode) live; clicking sets the choice.
-                    Picker("Mode", selection: Binding(get: { session.displayedSelectionMode },
-                                                      set: { session.selectionModeChoice = $0 })) {
-                        ForEach(SelectionMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                    }
-                                                      .pickerStyle(.segmented).labelsHidden().fixedSize()
-                                                      .help("Hold Shift to add or Option to subtract for one outline")
-                    if session.tool == .wand, session.wandMode == .wand { wandControls }
-                    if session.tool == .wand, session.wandMode == .object { objectSelectionControls }
-                    // Rectangles snap to whole pixels, so smoothing doesn't apply (as in Photoshop); ellipses curve.
-                    if session.tool == .lasso || session.tool == .wand || (session.tool == .marquee && session.marqueeKind == .ellipse) {
-                        Toggle("Anti-alias", isOn: $session.selectionAntialiased)
-                            .help(session.tool == .wand && session.wandMode == .object ? "Smooth the detected object outline; turn off for the raw pixel mask" : "Smooth selection edges; turn off for hard pixel edges")
-                    }
-                    Divider().frame(height: 18)
-                    modifyControl("Expand", amount: $session.selectionExpandAmount) {
-                        session.expandSelection(by: session.selectionExpandAmount)
-                    }
-                    modifyControl("Contract", amount: $session.selectionContractAmount) {
-                        session.contractSelection(by: session.selectionContractAmount)
-                    }
-                    // Softens the selection's edge, as Select → Feather does.
-                    HStack(spacing: 5) {
-                        Button("Feather") { session.featherSelection(by: session.selectionFeatherAmount) }
-                            .disabled(!session.canModifySelection)
-                            .help("Fade the edge of the selection by this many pixels")
-                        TextField("Feather", value: Binding(get: { Double(session.selectionFeatherAmount) },
-                                                            set: { session.selectionFeatherAmount = $0.isFinite ? Int(min(250, max(1, $0))) : 2 }),
-                                  format: .number.precision(.fractionLength(0)))
-                        .frame(width: 48).textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing)
-                        .arrowSteps(value: { Double(session.selectionFeatherAmount) },
-                                    change: { session.selectionFeatherAmount = Int(min(250, max(1, $0))) })
-                        .unitSuffix("px", scrubValue: $session.selectionFeatherAmount,
-                                    sensitivity: 1, range: 1...250)
-                    }
-                }
-            }
-            .scrollIndicators(.never)
+            Text(titleText).font(ToolHeaderStyle.titleFont)
+            selectionScroll
             Spacer(minLength: 0)
-            if let selection = session.selection {
-                if selection.isEmpty { Text("Empty selection").foregroundStyle(.secondary) }
-                Button("Deselect") { session.deselect() }.disabled(!session.canEditSelection)
-            }
+            selectionStatus
         }
         .padding(.horizontal, 18).toolHeaderBar().releasesFocusOnCommit(session)
         .disabled(session.showsBusy || session.document == nil)
+    }
+
+    /// The tool's name, kept out of the body: nested ternaries made the Swift 5.7 type checker give up.
+    private var titleText: String {
+        session.tool == .marquee ? "Marquee" : session.tool == .wand ? "Magic" : "Lasso"
+    }
+
+    @ViewBuilder private var selectionStatus: some View {
+        if let selection = session.selection {
+            if selection.isEmpty { Text("Empty selection").foregroundStyle(.secondary) }
+            Button("Deselect") { session.deselect() }.disabled(!session.canEditSelection)
+        }
+    }
+
+    @ViewBuilder private var selectionScroll: some View {
+        ScrollView(.horizontal) {
+            selectionTools
+        }
+        .scrollIndicators(.never)
+    }
+
+    @ViewBuilder private var selectionTools: some View {
+        HStack(spacing: 12) {
+            shapePickers
+            selectionModePicker
+            toolSpecificControls
+            antiAliasToggle
+            Divider().frame(height: 18)
+            modifyControls
+            featherControl
+        }
+    }
+
+    @ViewBuilder private var shapePickers: some View {
+        if session.tool == .marquee {
+            Picker("Shape", selection: Binding(get: { session.marqueeKind }, set: { kind in
+                session.cancelLasso()
+                session.marqueeKind = kind
+            })) {
+                ForEach(LassoKind.marqueeChoices, id: \.self) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented).labelsHidden().fixedSize()
+            .help("Press M to switch between Rectangle and Ellipse")
+        }
+        if session.tool == .wand {
+            Picker("Mode", selection: Binding(get: { session.wandMode }, set: { mode in
+                session.cancelLasso()
+                session.wandMode = mode
+            })) {
+                ForEach(WandMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented).labelsHidden().fixedSize()
+            .help("Press Tab to switch between Wand and Object")
+        }
+        if session.tool == .lasso {
+            Picker("Lasso", selection: Binding(get: { session.lassoKind }, set: { kind in
+                session.cancelLasso()
+                session.lassoKind = kind
+            })) {
+                ForEach(LassoKind.lassoChoices, id: \.self) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented).labelsHidden().fixedSize()
+            .help("Press L to switch between Freehand and Polygonal")
+        }
+    }
+
+    @ViewBuilder private var selectionModePicker: some View {
+        // Shows held Shift/Option (or an outline's mode) live; clicking sets the choice.
+        Picker("Mode", selection: Binding(get: { session.displayedSelectionMode },
+                                          set: { session.selectionModeChoice = $0 })) {
+            ForEach(SelectionMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+        }
+        .pickerStyle(.segmented).labelsHidden().fixedSize()
+        .help("Hold Shift to add or Option to subtract for one outline")
+    }
+
+    @ViewBuilder private var toolSpecificControls: some View {
+        if session.tool == .wand, session.wandMode == .wand { wandControls }
+        if session.tool == .wand, session.wandMode == .object { objectSelectionControls }
+    }
+
+    @ViewBuilder private var antiAliasToggle: some View {
+        // Rectangles snap to whole pixels, so smoothing doesn't apply (as in Photoshop); ellipses curve.
+        if session.tool == .lasso || session.tool == .wand || (session.tool == .marquee && session.marqueeKind == .ellipse) {
+            Toggle("Anti-alias", isOn: $session.selectionAntialiased)
+                .help(session.tool == .wand && session.wandMode == .object ? "Smooth the detected object outline; turn off for the raw pixel mask" : "Smooth selection edges; turn off for hard pixel edges")
+        }
+    }
+
+    @ViewBuilder private var modifyControls: some View {
+        modifyControl("Expand", amount: $session.selectionExpandAmount) {
+            session.expandSelection(by: session.selectionExpandAmount)
+        }
+        modifyControl("Contract", amount: $session.selectionContractAmount) {
+            session.contractSelection(by: session.selectionContractAmount)
+        }
+    }
+
+    @ViewBuilder private var featherControl: some View {
+        // Softens the selection's edge, as Select → Feather does.
+        HStack(spacing: 5) {
+            Button("Feather") { session.featherSelection(by: session.selectionFeatherAmount) }
+                .disabled(!session.canModifySelection)
+                .help("Fade the edge of the selection by this many pixels")
+            TextField("Feather", value: Binding(get: { Double(session.selectionFeatherAmount) },
+                                                set: { session.selectionFeatherAmount = $0.isFinite ? Int(min(250, max(1, $0))) : 2 }),
+                      format: .number.precision(.fractionLength(0)))
+            .frame(width: 48).textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing)
+            .arrowSteps(value: { Double(session.selectionFeatherAmount) },
+                        change: { session.selectionFeatherAmount = Int(min(250, max(1, $0))) })
+            .unitSuffix("px", scrubValue: $session.selectionFeatherAmount,
+                        sensitivity: 1, range: 1...250)
+        }
     }
 
     /// Tolerance, sample size, which pixels to read, and whether matches must connect.
@@ -162,6 +204,7 @@ struct LassoControls: View {
 
 /// Tool-rail icon for the Polygonal Lasso: the lasso's loop and rope drawn as straight segments, in the
 /// line weight of the SF Symbols beside it.
+@MainActor
 struct PolygonalLassoToolIcon: View {
     var body: some View {
         Canvas { context, size in
@@ -184,8 +227,9 @@ struct PolygonalLassoToolIcon: View {
 }
 
 /// Selection modifiers share the filter panels' floating window and control layout.
+@MainActor
 struct SelectionAmountSheet: View {
-    let session: EditorSession
+    @ObservedObject var session: EditorSession
     let operation: EditorSession.SelectionAmountOperation
     @State private var input: String
     @FocusState private var focused: Bool
@@ -244,6 +288,7 @@ struct SelectionAmountSheet: View {
     }
 }
 
+@MainActor
 struct ObjectSelectionToolIcon: View {
     var body: some View {
         Canvas { context, size in

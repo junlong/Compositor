@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// Resolve in pasteboard order; the importer validates contents rather than trusting extensions.
+
 @MainActor
 enum ImageFileDrop {
     static func importProviders(_ providers: [NSItemProvider], into session: EditorSession, at point: CGPoint?, projects: ProjectController? = nil, workspace: ProjectWorkspace? = nil, destination: UUID? = nil) async {

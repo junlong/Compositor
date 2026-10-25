@@ -2,6 +2,8 @@ import AppKit
 import UniformTypeIdentifiers
 import SwiftUI
 
+
+
 @MainActor
 final class ProjectController {
     let session: EditorSession
@@ -234,7 +236,7 @@ final class ProjectController {
 
     /// Writes a captured document in the background. Only that captured version counts as saved.
     private func write(_ snapshot: ProjectSnapshot, to destination: URL, revision: UUID) async -> Bool {
-        let task = Task { @MainActor [self] () -> Bool in
+        let task = Task { [self] () -> Bool in
             let scoped = destination.startAccessingSecurityScopedResource()
             defer { if scoped { destination.stopAccessingSecurityScopedResource() } }
             // Our own save changes the package too; the watch ignores events until the saved bytes are remembered.
@@ -421,12 +423,12 @@ enum ExportFormat: String, CaseIterable {
     case channelPack = "Channel Pack"
     var type: UTType {
         switch self {
-        case .png, .channelPack: .png
-        case .jpeg: .jpeg
-        case .gif: .gif
-        case .tiff: .tiff
-        case .pdf: .pdf
-        case .exr: .openEXR
+        case .png, .channelPack: return .png
+        case .jpeg: return .jpeg
+        case .gif: return .gif
+        case .tiff: return .tiff
+        case .pdf: return .pdf
+        case .exr: return .openEXR
         }
     }
 }

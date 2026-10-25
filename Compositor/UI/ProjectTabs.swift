@@ -3,9 +3,10 @@ import UniformTypeIdentifiers
 import AppKit
 import Combine
 
+@MainActor
 struct ProjectWorkspaceView: View {
     let applicationDelegate: CompositorApplicationDelegate
-    private var workspace: ProjectWorkspace { applicationDelegate.workspace }
+    @ObservedObject var workspace: ProjectWorkspace
     var body: some View {
         ContentView(session: workspace.current.session, applicationDelegate: applicationDelegate)
             .id(workspace.current.id)
@@ -47,8 +48,9 @@ private enum TabDragPhase {
     case ended(CGFloat)
 }
 
+@MainActor
 struct ProjectTabStrip: View {
-    let workspace: ProjectWorkspace
+    @ObservedObject var workspace: ProjectWorkspace
     /// An external pasteboard drag (a file, or a layer from the panel) is in the air over the app.
     @State private var dragging = false
     @State private var dragChangeCount = NSPasteboard(name: .drag).changeCount
@@ -101,7 +103,7 @@ struct ProjectTabStrip: View {
             .onDrop(of: [UTType.fileURL.identifier, UTType.image.identifier, ProjectWorkspace.layerType], delegate:
                 ProjectTabDropDelegate(workspace: workspace, destination: nil, targeted: $newTargeted))
             .onAppear { slotWidth = proxy.size.width }
-            .onChange(of: proxy.size.width) { _, new in slotWidth = new }
+            .compatOnChange(of: proxy.size.width) { _, new in slotWidth = new }
         }
         .frame(height: 34)
     }
@@ -213,6 +215,7 @@ struct ProjectTabStrip: View {
     }
 }
 
+@MainActor
 private func projectTabLabelWidth(_ tab: ProjectTab, active: Bool) -> CGFloat {
     let font = NSFont.systemFont(ofSize: 12, weight: active ? .semibold : .medium)
     let titleWidth = (tab.title as NSString).size(withAttributes: [.font: font]).width
@@ -220,6 +223,7 @@ private func projectTabLabelWidth(_ tab: ProjectTab, active: Bool) -> CGFloat {
     return min(155, max(35, ceil(titleWidth) + dotWidth))
 }
 
+@MainActor
 private func projectTabPillWidth(_ tab: ProjectTab, active: Bool, closable: Bool) -> CGFloat {
     // 11 px leading, 8 px trailing, 16 px close button, 5 px after close; with no close button, 11 px each side.
     projectTabLabelWidth(tab, active: active) + (closable ? 40 : 22)
@@ -243,11 +247,13 @@ final class TitleBarDragView: NSView {
     }
 }
 
+@MainActor
 private struct TitleBarDragArea: NSViewRepresentable {
     func makeNSView(context: Context) -> TitleBarDragView { TitleBarDragView(frame: .zero) }
     func updateNSView(_ view: TitleBarDragView, context: Context) {}
 }
 
+@MainActor
 private struct NewTabDropSlot: View {
     let workspace: ProjectWorkspace
     /// Shared with the bar around it, which takes the same drop, so the slot lights up wherever on the bar it's headed.
@@ -270,6 +276,7 @@ private struct NewTabDropSlot: View {
 
 /// The far-left pill standing in for the tabs that don't fit. Styled like an inactive tab pill; clicking it
 /// drops a native menu below it listing the hidden tabs in their real order.
+@MainActor
 private struct OverflowTabsPill: View {
     let workspace: ProjectWorkspace
     let hiddenIDs: [UUID]
@@ -299,6 +306,7 @@ private struct OverflowTabsPill: View {
 }
 
 /// Clicking the overflow pill opens its menu just below it, as a pop-up button does.
+@MainActor
 private struct OverflowMenuAnchor: NSViewRepresentable {
     let label: String
     let items: () -> [(title: String, action: () -> Void)]
@@ -334,6 +342,7 @@ private struct OverflowMenuAnchor: NSViewRepresentable {
     }
 }
 
+@MainActor
 private struct ProjectTabButton: View {
     let workspace: ProjectWorkspace
     let tab: ProjectTab
@@ -347,7 +356,10 @@ private struct ProjectTabButton: View {
                     if tab.session.isModified {
                         Circle().frame(width: 5, height: 5).accessibilityLabel("Unsaved changes")
                     }
-                    Text(tab.title).font(.system(size: 12, weight: active ? .semibold : .medium)).lineLimit(1)
+                    Text(tab.title)
+                        .font(.system(size: 12, weight: active ? .semibold : .medium))
+                        .foregroundStyle(Color.white.opacity(active ? 1 : 0.75))
+                        .lineLimit(1)
                 }
                 .frame(width: projectTabLabelWidth(tab, active: active), alignment: .leading)
                 .padding(.leading, 11).padding(.trailing, workspace.canClose(tab) ? 8 : 11)
@@ -365,7 +377,7 @@ private struct ProjectTabButton: View {
             // The only tab, still blank, has nothing to close: no button, and the pill closes up around its name.
             if workspace.canClose(tab) {
                 Button { Task { await workspace.close(tab.id) } } label: {
-                    Image(systemName: "xmark").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
+                    Image(systemName: "xmark").font(.system(size: 9, weight: .semibold)).foregroundStyle(Color.white.opacity(0.6))
                         .frame(width: 16, height: 28)
                         .padding(.trailing, 5)
                         .contentShape(Rectangle())
@@ -382,6 +394,7 @@ private struct ProjectTabButton: View {
     }
 }
 
+@MainActor
 struct NewProjectDropTarget: ViewModifier {
     let workspace: ProjectWorkspace?
     @State private var targeted = false

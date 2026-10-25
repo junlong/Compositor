@@ -1,7 +1,7 @@
 import AppKit
 
 /// Turns raster coverage into a selection outline along exact pixel edges.
-nonisolated enum MaskTracing {
+enum MaskTracing {
     /// Outline of a mask's pixels darker than 50% gray.
     static func darkPixels(in image: CGImage) -> CGPath? { trace(image, alpha: false) { $0 < 128 } }
 

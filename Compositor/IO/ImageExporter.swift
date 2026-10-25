@@ -3,13 +3,13 @@ import CoreGraphics
 import ImageIO
 import UniformTypeIdentifiers
 
-nonisolated enum ExportError: LocalizedError {
+enum ExportError: LocalizedError {
     case tooLarge, render, encode
     var errorDescription: String? {
         switch self {
-        case .tooLarge: "Image export supports canvases up to \(DocumentLimits.maxSurfaceMegapixels) megapixels and \(DocumentLimits.maxSide.formatted()) pixels per side."
-        case .render: "The canvas could not be rendered. Try a smaller canvas."
-        case .encode: "The image could not be encoded."
+        case .tooLarge: return "Image export supports canvases up to \(DocumentLimits.maxSurfaceMegapixels) megapixels and \(DocumentLimits.maxSide.formatted()) pixels per side."
+        case .render: return "The canvas could not be rendered. Try a smaller canvas."
+        case .encode: return "The image could not be encoded."
         }
     }
 }
@@ -273,20 +273,20 @@ actor ImageExporter {
     }
 }
 
-nonisolated struct QuickLookImages: Sendable {
+struct QuickLookImages: Sendable {
     let preview: Data
 }
-nonisolated struct ExportRaster: @unchecked Sendable {
+struct ExportRaster: @unchecked Sendable {
     let image: CGImage
     var resolution: Double = 72
 }
-nonisolated struct JPEGOptions: Equatable, Sendable {
+struct JPEGOptions: Equatable, Sendable {
     var quality: Double = 0.85
     var red: CGFloat = 1
     var green: CGFloat = 1
     var blue: CGFloat = 1
 }
-nonisolated struct JPEGResult: @unchecked Sendable {
+struct JPEGResult: @unchecked Sendable {
     let data: Data
     let preview: CGImage
 }

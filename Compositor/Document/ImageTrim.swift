@@ -9,7 +9,7 @@ public enum TrimBasedOn: String, CaseIterable, Identifiable, Sendable {
     public var id: String { rawValue }
 }
 
-nonisolated public struct TrimOptions: Sendable, Equatable {
+public struct TrimOptions: Sendable, Equatable {
     public var basedOn: TrimBasedOn
     public var top: Bool
     public var bottom: Bool
@@ -52,7 +52,7 @@ public enum TrimError: LocalizedError, Sendable {
     }
 }
 
-nonisolated public enum ImageTrim {
+public enum ImageTrim {
     /// Calculates the crop rectangle in document/image coordinates to trim according to the specified options.
     /// Returns nil if no non-trimmed content remains (e.g. fully transparent or single solid color).
     public static func calculateTrimRect(in image: CGImage, options: TrimOptions) -> CGRect? {
@@ -194,7 +194,7 @@ nonisolated public enum ImageTrim {
     }
 }
 
-@MainActor
+
 extension EditorSession {
     @discardableResult
     func trim(options: TrimOptions = TrimOptions()) async throws -> Bool {

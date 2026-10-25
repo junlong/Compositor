@@ -6,7 +6,7 @@ import Metal
 ///
 /// Both stay with the document as the canvas pans: noise is a value per frame pixel counted from the document's
 /// corner (one per document pixel at 100%, as in export), and grain's size is in document pixels.
-nonisolated enum GPUNoise {
+enum GPUNoise {
     static func addNoise(to image: CIImage, mapping: CGAffineTransform, amount: Float, gaussian: Bool, monochromatic: Bool,
                          seed: UInt32) -> CIImage? {
         var parameters = NoiseParameters(amount: amount, gaussian: gaussian ? 1 : 0, monochromatic: monochromatic ? 1 : 0, seed: seed,

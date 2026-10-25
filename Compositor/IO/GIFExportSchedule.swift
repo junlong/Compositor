@@ -1,7 +1,7 @@
 import Foundation
 
 /// A shared export clock, in 10 ms GIF ticks. Shorter tracks hold their final frame.
-nonisolated struct GIFExportSchedule {
+struct GIFExportSchedule {
     struct Track {
         let layer: ProjectLayerRecord
         let animation: GIFAnimation

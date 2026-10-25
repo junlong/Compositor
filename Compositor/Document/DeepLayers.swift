@@ -4,7 +4,7 @@ import AppKit
 /// channel; its `image` is a dithered 8-bit copy that the canvas, thumbnails and every tool keep using unchanged.
 /// Operations that understand 16-bit pixels read `deep` and make a new one; any other operation makes a new
 /// `ImportedImage` without it, and the layer is simply 8-bit from then on (like text, rasterized).
-nonisolated enum DeepLayer {
+enum DeepLayer {
     /// The one layout 16-bit pixels are kept in: sRGB, premultiplied RGBA, native-endian 16-bit, rows packed
     /// (`width × 8` bytes), top-left origin like `BrushRaster`. `hdr`: an HDR layer's instead, the same but half floats
     /// in extended sRGB, keeping light brighter than white (see `hdrSpace`).
@@ -137,7 +137,7 @@ nonisolated enum DeepLayer {
         return made
     }
     private static let canvasLock = NSLock()
-    nonisolated(unsafe) private static var canvasImages: [(key: ObjectIdentifier, source: CGImage, image: CGImage)] = []
+    private static var canvasImages: [(key: ObjectIdentifier, source: CGImage, image: CGImage)] = []
 
     /// An HDR layer's pixels at the size of `preview` (an 8-bit copy a panel previews from), for the panel to preview
     /// from instead, as OK works from them; nil for any other layer.

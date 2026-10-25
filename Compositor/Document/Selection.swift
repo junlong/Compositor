@@ -4,7 +4,7 @@ import CoreImage
 /// A document-space selection outline, clipped to the canvas. `nil` on the document
 /// means no selection; a selection whose path is empty is an explicit empty selection,
 /// which later edits must treat as "touch nothing", never as "touch everything".
-nonisolated struct DocumentSelection: Equatable, @unchecked Sendable {
+struct DocumentSelection: Equatable, @unchecked Sendable {
     let path: CGPath
     var antialiased = true
     /// How far the edge fades, in document pixels. 0 is a hard edge.
@@ -50,7 +50,7 @@ extension DocumentSelection {
 
 /// Selection coverage for one region of the document. Applied as a clip, soft edges
 /// blend partially; with no coverage (an empty selection) it clips everything away.
-nonisolated struct SelectionClip: @unchecked Sendable {
+struct SelectionClip: @unchecked Sendable {
     let rect: CGRect
     let coverage: CGImage?
 
@@ -67,12 +67,12 @@ nonisolated struct SelectionClip: @unchecked Sendable {
 
 /// The Magic tool's modes: Wand selects pixels of a similar color, Object traces the outline of
 /// whatever the click lands on. Tab switches between them, as with the Brush's Paint and Erase.
-nonisolated enum WandMode: String, CaseIterable, Sendable {
+enum WandMode: String, CaseIterable, Sendable {
     case wand = "Wand"
     case object = "Object"
 }
 
-nonisolated enum LassoKind: String, CaseIterable, Sendable {
+enum LassoKind: String, CaseIterable, Sendable {
     case freehand = "Freehand"
     case polygonal = "Polygonal"
     /// The Marquee's outlines; not offered in the Lasso's Freehand/Polygonal choice.
@@ -82,7 +82,7 @@ nonisolated enum LassoKind: String, CaseIterable, Sendable {
     static let marqueeChoices: [LassoKind] = [.rectangle, .ellipse]
 }
 
-nonisolated enum SelectionMode: String, CaseIterable, Sendable {
+enum SelectionMode: String, CaseIterable, Sendable {
     case replace = "New"
     case add = "Add"
     case subtract = "Subtract"
@@ -90,7 +90,7 @@ nonisolated enum SelectionMode: String, CaseIterable, Sendable {
 
 /// The box a drag from `anchor` to `point` spans, in whole pixels. `square` evens the sides;
 /// `fromCenter` grows the box around the anchor. Shared by the Marquee and the Shape tool.
-nonisolated enum DragBox {
+enum DragBox {
     static func rect(from anchor: CGPoint, to point: CGPoint, square: Bool, fromCenter: Bool) -> CGRect {
         var dx = point.x.rounded() - anchor.x, dy = point.y.rounded() - anchor.y
         if square {

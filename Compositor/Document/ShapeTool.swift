@@ -1,6 +1,6 @@
 import AppKit
 
-nonisolated enum ShapeKind: String, CaseIterable, Codable, Sendable {
+enum ShapeKind: String, CaseIterable, Codable, Sendable {
     case rectangle = "Rectangle"
     case ellipse = "Ellipse"
     case line = "Line"
@@ -54,7 +54,7 @@ nonisolated enum ShapeKind: String, CaseIterable, Codable, Sendable {
 }
 
 /// How a Line shape's stroke is broken up.
-nonisolated enum ShapeLineStyle: String, CaseIterable, Codable, Sendable {
+enum ShapeLineStyle: String, CaseIterable, Codable, Sendable {
     case solid = "Solid"
     case dotted = "Dotted"
     case dashed = "Dashed"
@@ -64,10 +64,10 @@ nonisolated enum ShapeLineStyle: String, CaseIterable, Codable, Sendable {
     /// is exactly as long as the line is wide. Empty for a solid line.
     var pattern: [CGFloat] {
         switch self {
-        case .solid: []
-        case .dashed: [3, 2]
-        case .longDash: [7, 2]
-        case .dotted: [1, 1]
+        case .solid: return []
+        case .dashed: return [3, 2]
+        case .longDash: return [7, 2]
+        case .dotted: return [1, 1]
         }
     }
 
@@ -82,7 +82,7 @@ nonisolated enum ShapeLineStyle: String, CaseIterable, Codable, Sendable {
 }
 
 /// How the ends of a Line shape, and of each of its dashes, are finished.
-nonisolated enum ShapeLineCap: String, CaseIterable, Codable, Sendable {
+enum ShapeLineCap: String, CaseIterable, Codable, Sendable {
     case square = "Square"
     case round = "Round"
     var cgLineCap: CGLineCap { self == .round ? .round : .square }
@@ -104,7 +104,7 @@ extension CGContext {
     /// rather than by Core Graphics, whose caps on a dot (a dash of almost no length) cover only a quarter of it, so
     /// 1-pixel dots came out gray. A square cap is a flat-ended line reaching half the width past each end, cut into
     /// full-length dashes; with round caps each dash is its own stroke, and each dot a circle.
-    nonisolated func strokeShapeLine(from start: CGPoint, to end: CGPoint, width: CGFloat, style: ShapeLineStyle, cap: ShapeLineCap) {
+    func strokeShapeLine(from start: CGPoint, to end: CGPoint, width: CGFloat, style: ShapeLineStyle, cap: ShapeLineCap) {
         setLineWidth(width)
         setLineDash(phase: 0, lengths: [])
         let length = hypot(end.x - start.x, end.y - start.y)
@@ -155,7 +155,7 @@ extension CGContext {
 }
 
 /// What a shape layer draws, kept so the shape can be drawn again at a new size.
-nonisolated struct LayerShapeStyle: Codable, Equatable, Sendable {
+struct LayerShapeStyle: Codable, Equatable, Sendable {
     var kind: ShapeKind
     var red: CGFloat
     var green: CGFloat
@@ -179,7 +179,7 @@ nonisolated struct LayerShapeStyle: Codable, Equatable, Sendable {
 /// A layer made with the Shape tool. Its pixels are an ordinary raster, so it clips, masks, blends and filters like
 /// any layer; `image` is the raster the shape drew. Once anything else changes those pixels (painting, a filter),
 /// the layer's image is no longer this one and the layer is plain pixels from then on.
-nonisolated struct LayerShape: Equatable, @unchecked Sendable {
+struct LayerShape: Equatable, @unchecked Sendable {
     var style: LayerShapeStyle
     let image: CGImage
     static func == (lhs: Self, rhs: Self) -> Bool { lhs.style == rhs.style && lhs.image === rhs.image }
@@ -214,7 +214,7 @@ struct ShapeDraft: Equatable {
 
 extension EditorSession {
     /// Pixels one shape layer may hold, the same budget as an import.
-    nonisolated static let maxShapePixels = DocumentLimits.maxSurfacePixels
+    static let maxShapePixels = DocumentLimits.maxSurfacePixels
 
     func beginShape(at point: CGPoint) {
         guard tool == .shape, canEditLayers, point.x.isFinite, point.y.isFinite else { return }
@@ -235,7 +235,7 @@ extension EditorSession {
     /// How far a line of `width` is nudged off the whole-pixel points it's dragged between, so its edges land on
     /// pixel edges: half a pixel for an odd width, putting a 1-pixel line in the middle of one row rather than
     /// across two at half strength; nothing for an even one.
-    nonisolated static func lineGridShift(width: CGFloat) -> CGFloat {
+    static func lineGridShift(width: CGFloat) -> CGFloat {
         let half = width / 2
         return half - half.rounded(.down)
     }

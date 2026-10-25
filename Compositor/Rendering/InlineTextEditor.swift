@@ -124,7 +124,6 @@ final class InlineTextEditor: NSView, NSTextViewDelegate {
         textView.wantsLayer = true
         textView.layer?.anchorPoint = .zero
         addSubview(textView)
-        clipsToBounds = false
         // Shown once it has been placed, so a flipped layer never appears for a frame at the unmirrored spot.
         isHidden = true
     }

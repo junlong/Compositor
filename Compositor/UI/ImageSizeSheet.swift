@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct ImageSizeSheet: View {
     let document: CanvasDocument
     let finish: (ImageSizeOptions?) -> Void
@@ -109,6 +110,7 @@ struct ImageSizeSheet: View {
             Picker("Units", selection: $unit) {
                 ForEach(units.filter { resample || ($0 != "Pixels" && $0 != "Percent") }, id: \.self) { Text($0) }
             }
+            Group {
             HStack {
                 Text("Width").frame(width: 75, alignment: .leading)
                     .scrubbable(sensitivity: scrubSensitivity(isWidth: true),
@@ -124,10 +126,12 @@ struct ImageSizeSheet: View {
                 TextField("Height", value: dimension(isWidth: false), format: .number.precision(.fractionLength(0...3)))
             }
             Toggle("Lock aspect ratio", isOn: $locked).disabled(!resample)
+            }
+            Group {
             HStack {
                 Text("Resolution").scrubbable(sensitivity: 1, value: $resolution, range: 1...9600, step: 1)
                 TextField("Resolution", value: $resolution, format: .number.precision(.fractionLength(0...3)))
-                    .onChange(of: resolution) { _, new in
+                    .compatOnChange(of: resolution) { _, new in
                         guard new.isFinite, new > 0 else { return }
                         if resample, unit == "Inches" || unit == "Centimeters" {
                             width *= new / lastResolution
@@ -137,13 +141,14 @@ struct ImageSizeSheet: View {
                     }
                 Text("pixels/inch").foregroundStyle(.secondary)
             }
-            Toggle("Resample", isOn: $resample).onChange(of: resample) { _, enabled in
+            Toggle("Resample", isOn: $resample).compatOnChange(of: resample) { _, enabled in
                 if !enabled {
                     width = Double(document.width)
                     height = Double(document.height)
                     locked = true
                     if unit == "Pixels" || unit == "Percent" { unit = "Inches" }
                 }
+            }
             }
             if resample {
                 Picker("Sampling", selection: $sampling) {

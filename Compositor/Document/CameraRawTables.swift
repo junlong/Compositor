@@ -6,7 +6,7 @@ import Foundation
 /// blends the two nearest tables. Temperature and Tint, which Camera Raw turns into one white point together, come
 /// from a grid of both and blend four. Contrast, Highlights and Shadows adapt to the picture, each to one measure of
 /// its brightness, so theirs were measured on backgrounds of seven brightnesses and blend across those too.
-nonisolated enum CameraRawTables {
+enum CameraRawTables {
     static let size = 17
     /// The grid the stages are composed onto, finer than the tables so composing adds little blur.
     static let grid = 33

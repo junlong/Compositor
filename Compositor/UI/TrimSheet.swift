@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct TrimSheet: View {
     let finish: (TrimOptions?) -> Void
     @State private var basedOn: TrimBasedOn = .transparentPixels
@@ -29,12 +30,12 @@ struct TrimSheet: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Trim Away").font(.headline)
-                Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 8) {
-                    GridRow {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 24) {
                         Toggle("Top", isOn: $trimTop)
                         Toggle("Bottom", isOn: $trimBottom)
                     }
-                    GridRow {
+                    HStack(spacing: 24) {
                         Toggle("Left", isOn: $trimLeft)
                         Toggle("Right", isOn: $trimRight)
                     }

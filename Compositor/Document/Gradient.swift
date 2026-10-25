@@ -1,17 +1,17 @@
 import AppKit
 
-nonisolated enum GradientStyle: String, CaseIterable, Sendable {
+enum GradientStyle: String, CaseIterable, Sendable {
     case foregroundToBackground = "Foreground to Background"
     case foregroundToTransparent = "Foreground to Transparent"
 }
 
 /// Linear runs from start to end; radial is centered on the start with the end on its rim.
-nonisolated enum GradientShape: String, CaseIterable, Sendable {
+enum GradientShape: String, CaseIterable, Sendable {
     case linear = "Linear"
     case radial = "Radial"
 }
 
-nonisolated struct GradientSettings: Equatable, Sendable {
+struct GradientSettings: Equatable, Sendable {
     var shape = GradientShape.linear
     var style = GradientStyle.foregroundToTransparent
     var reversed = false

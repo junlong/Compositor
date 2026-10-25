@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 
+@MainActor
 struct BlendModePicker: NSViewRepresentable {
     let session: EditorSession
     func makeCoordinator() -> Coordinator { Coordinator(session: session) }
@@ -16,8 +17,6 @@ struct BlendModePicker: NSViewRepresentable {
         button.target = context.coordinator
         button.action = #selector(Coordinator.choose(_:))
         button.setAccessibilityLabel("Blend mode")
-        // A capsule like the SwiftUI buttons and menus (`roundedControls`), which don't reach this AppKit pop-up.
-        button.borderShape = .capsule
         return button
     }
     /// As wide as it's offered. Left to itself, the pop-up insists on the width of its longest mode, wider than a
@@ -37,6 +36,7 @@ struct BlendModePicker: NSViewRepresentable {
         if coordinator.tracking { coordinator.session.previewBlendMode(nil, for: nil) }
         button.menu?.delegate = nil
     }
+    @MainActor
     final class Coordinator: NSObject, NSMenuDelegate {
         let session: EditorSession
         var tracking = false

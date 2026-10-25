@@ -2,6 +2,7 @@ import SwiftUI
 
 /// A GIF layer's frames under the canvas: play and pause, one delay for every frame, and a strip of thumbnails. A click
 /// shows a frame, which painting and filters then change; right-click duplicates or deletes it.
+@MainActor
 struct GIFTimeline: View {
     let frames: [GIFTimelineFrame]
     let selectedFrameIndex: Int
@@ -40,7 +41,7 @@ struct GIFTimeline: View {
                     Text(timing.mode == .uniform ? "\(Int(delay.rounded()))ms" : originalDelays(spaced: false))
                         .font(.system(size: 13)).foregroundStyle(.secondary)
                 }
-                .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+                .menuStyle(.borderlessButton).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
                 .disabled(!canEditTiming)
                 .help("How long each frame shows")
             }
@@ -56,14 +57,14 @@ struct GIFTimeline: View {
                     }
                     .padding(.horizontal, 12).padding(.vertical, 10)
                 }
-                .onChange(of: selectedFrameIndex) { _, index in
+                .compatOnChange(of: selectedFrameIndex) { _, index in
                     withAnimation(.easeOut(duration: 0.15)) { scroller.scrollTo(index) }
                 }
             }
         }
         // Decoding must not lengthen the layer's saved frame delays.
         .task(id: Playback(isPlaying: isPlaying, frames: frames.map(\.index), timing: timing)) { await play() }
-        .onChange(of: canPlay) { if !canPlay, isPlaying { onStopPlayback() } }
+        .onChange(of: canPlay) { _ in if !canPlay, isPlaying { onStopPlayback() } }
         .onDisappear { onStopPlayback() }
     }
 
@@ -73,12 +74,12 @@ struct GIFTimeline: View {
         let timing: GIFFrameTiming
     }
 
-    func play<C: Clock>(clock: C = ContinuousClock()) async where C.Duration == Duration {
+    func play() async {
         guard isPlaying, frames.count > 1 else { return }
         let durations = frames.map { max(GIFTimelineLimits.minimumFrameDuration, timing.delay(for: $0)) }
         let initial = frames.firstIndex { $0.index == selectedFrameIndex } ?? 0
         do {
-            try await GIFPreviewPlayback.play(durations: durations, startingAt: initial, clock: clock) { position in
+            try await GIFPreviewPlayback.play(durations: durations, startingAt: initial) { position in
                 await onSelectFrame(frames[position].index)
             }
         } catch is CancellationError { }

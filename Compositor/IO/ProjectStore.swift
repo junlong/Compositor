@@ -5,8 +5,8 @@ import UniformTypeIdentifiers
 
 extension UTType {
     static let compositorProject = UTType(exportedAs: "com.compositor.project", conformingTo: .package)
-    nonisolated static let photoshopImage = UTType(importedAs: "com.adobe.photoshop-image")
-    nonisolated static let photoshopLargeImage = UTType(importedAs: "com.adobe.photoshop-large-image")
+    static let photoshopImage = UTType(importedAs: "com.adobe.photoshop-image")
+    static let photoshopLargeImage = UTType(importedAs: "com.adobe.photoshop-large-image")
     static let importableImages: [UTType] = [.jpeg, .png, .gif, .heic, .heif, .tiff, .webP, .openEXR, .radianceHDR, .photoshopImage,
                                              .photoshopLargeImage, .rawImage, .svg, .pdf]
     /// OpenEXR, the format renders (Blender's among them) keep light brighter than white in.
@@ -15,7 +15,7 @@ extension UTType {
     static let radianceHDR = UTType("public.radiance") ?? .image
 }
 
-nonisolated struct ProjectManifest: Codable, Sendable {
+struct ProjectManifest: Codable, Sendable {
     /// The format version new saves write.
     static let current = 17
     /// Every version `load` accepts: each one a release has written (1 through `current`), and 27 from the
@@ -36,7 +36,7 @@ nonisolated struct ProjectManifest: Codable, Sendable {
     var guides: [CanvasGuide]? = nil
 }
 
-nonisolated struct ProjectLayerRecord: Codable, Sendable {
+struct ProjectLayerRecord: Codable, Sendable {
     let id: UUID
     let name: String
     var isVisible: Bool
@@ -63,7 +63,7 @@ nonisolated struct ProjectLayerRecord: Codable, Sendable {
     var gif: ProjectGIFRecord? = nil
 }
 
-nonisolated struct ProjectGIFRecord: Codable, Sendable {
+struct ProjectGIFRecord: Codable, Sendable {
     let sourceFile: String
     let selectedFrameIndex: Int
     var geometry: GIFFrameGeometry? = nil
@@ -98,7 +98,7 @@ nonisolated struct ProjectGIFRecord: Codable, Sendable {
     }
 }
 
-nonisolated struct ProjectGIFTimingRecord: Codable, Sendable {
+struct ProjectGIFTimingRecord: Codable, Sendable {
     var mode: GIFDelayMode
     var uniformDelay: TimeInterval
     var frameDelays: [ProjectGIFDelayRecord]
@@ -122,17 +122,17 @@ nonisolated struct ProjectGIFTimingRecord: Codable, Sendable {
     }
 }
 
-nonisolated struct ProjectGIFDelayRecord: Codable, Sendable {
+struct ProjectGIFDelayRecord: Codable, Sendable {
     let index: Int
     let duration: TimeInterval
 }
 
-nonisolated struct ProjectGIFPixelsRecord: Codable, Sendable {
+struct ProjectGIFPixelsRecord: Codable, Sendable {
     let index: Int
     let imageFile: String
 }
 
-nonisolated struct ProjectSnapshot: @unchecked Sendable {
+struct ProjectSnapshot: @unchecked Sendable {
     // Snapshot dictionaries are value copies; their CGImages and GIF sources are immutable across actors.
     let manifest: ProjectManifest
     let images: [UUID: ImportedImage]
@@ -140,15 +140,15 @@ nonisolated struct ProjectSnapshot: @unchecked Sendable {
     var animations: [UUID: GIFAnimation] = [:]
 }
 
-nonisolated enum ProjectError: LocalizedError {
+enum ProjectError: LocalizedError {
     case invalid, version(Int), missingImage, tooLarge, encode
     var errorDescription: String? {
         switch self {
-        case .invalid: "This is not a valid Compositor project, or its metadata is damaged."
-        case .version(let version): "This project uses format version \(version). This app supports versions 1–\(ProjectManifest.current) and 27."
-        case .missingImage: "An image inside the project is missing or damaged. The current document has not been replaced."
-        case .tooLarge: "This project exceeds the supported canvas, layer, file-size, or \(DocumentLimits.documentBudgetMegapixels)-megapixel document limit."
-        case .encode: "An image could not be saved. The previous project has not been replaced."
+        case .invalid: return "This is not a valid Compositor project, or its metadata is damaged."
+        case .version(let version): return "This project uses format version \(version). This app supports versions 1–\(ProjectManifest.current) and 27."
+        case .missingImage: return "An image inside the project is missing or damaged. The current document has not been replaced."
+        case .tooLarge: return "This project exceeds the supported canvas, layer, file-size, or \(DocumentLimits.documentBudgetMegapixels)-megapixel document limit."
+        case .encode: return "An image could not be saved. The previous project has not been replaced."
         }
     }
 }

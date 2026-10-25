@@ -4,7 +4,7 @@ import Foundation
 /// Guided filtering (He, Sun & Tang): a mask pulled onto the edges of the image it came from, which is what recovers
 /// hair and fur that a segmentation model cuts straight through. Core Image's own `CIGuidedFilter` does nothing on
 /// this system and its edge-preserving upsample barely moves the mask, so this does the arithmetic directly.
-nonisolated enum GuidedMatte {
+enum GuidedMatte {
     /// Mean over a (2r+1)² square, as two running-sum passes — the cost doesn't grow with the radius.
     static func box(_ source: [Float], width: Int, height: Int, radius: Int) -> [Float] {
         let span = Float(radius * 2 + 1)

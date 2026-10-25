@@ -17,6 +17,7 @@ struct PSDConversionRequest: Identifiable, Equatable, Sendable {
     }
 }
 
+@MainActor
 struct PSDConversionSheet: View {
     let request: PSDConversionRequest
     let finish: (Bool) -> Void
@@ -55,6 +56,7 @@ struct PSDConversionSheet: View {
     }
 }
 
+@MainActor
 extension View {
     func psdConversionSheet(_ session: EditorSession) -> some View {
         sheet(isPresented: Binding(

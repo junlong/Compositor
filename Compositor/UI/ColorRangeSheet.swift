@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// Select > Color Range's panel: the eyedroppers, Fuzziness and Invert, with the selection updating on the canvas.
+@MainActor
 struct ColorRangeSheet: View {
-    @Bindable var session: EditorSession
+    @ObservedObject var session: EditorSession
     private var edit: ColorRangeEdit? { session.colorRange }
 
     var body: some View {
@@ -72,9 +73,9 @@ struct ColorRangeSheet: View {
 
     private func help(_ mode: HueSampleMode) -> String {
         switch mode {
-        case .replace: "Click the image to select that color"
-        case .add: "Click the image to add that color to the selection"
-        case .remove: "Click the image to take that color out of the selection"
+        case .replace: return "Click the image to select that color"
+        case .add: return "Click the image to add that color to the selection"
+        case .remove: return "Click the image to take that color out of the selection"
         }
     }
 

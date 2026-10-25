@@ -3,26 +3,26 @@ import AppKit
 import ImageIO
 
 /// The units New Canvas sizes can be typed in. Print units turn into pixels at the chosen DPI.
-nonisolated enum NewCanvasUnit: String, CaseIterable, Sendable {
+enum NewCanvasUnit: String, CaseIterable, Sendable {
     case pixels = "px", inches = "in", centimeters = "cm", millimeters = "mm"
 
     /// The unit written out, for the summary line's pill.
     var name: String {
         switch self {
-        case .pixels: "Pixels"
-        case .inches: "Inches"
-        case .centimeters: "Centimeters"
-        case .millimeters: "Millimeters"
+        case .pixels: return "Pixels"
+        case .inches: return "Inches"
+        case .centimeters: return "Centimeters"
+        case .millimeters: return "Millimeters"
         }
     }
     /// The next unit, for the pill: px → in → cm → mm → px.
     var next: NewCanvasUnit { Self.allCases[(Self.allCases.firstIndex(of: self)! + 1) % Self.allCases.count] }
     private var perInch: Double? {
         switch self {
-        case .pixels: nil
-        case .inches: 1
-        case .centimeters: 2.54
-        case .millimeters: 25.4
+        case .pixels: return nil
+        case .inches: return 1
+        case .centimeters: return 2.54
+        case .millimeters: return 25.4
         }
     }
     /// Whole pixels for a typed size, or nil when it isn't a size a canvas can have.
@@ -42,21 +42,22 @@ nonisolated enum NewCanvasUnit: String, CaseIterable, Sendable {
 }
 
 /// What a new canvas starts as: see-through, or a Background layer of white or black.
-nonisolated enum NewCanvasBackground: String, CaseIterable, Sendable {
+enum NewCanvasBackground: String, CaseIterable, Sendable {
     case transparent, white, black
     var title: String { "\(rawValue.capitalized) canvas" }
     var next: NewCanvasBackground { Self.allCases[(Self.allCases.firstIndex(of: self)! + 1) % Self.allCases.count] }
     var color: CGColor? {
         switch self {
-        case .transparent: nil
-        case .white: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1)
-        case .black: CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 1)
+        case .transparent: return nil
+        case .white: return CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1)
+        case .black: return CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 1)
         }
     }
 }
 
+@MainActor
 struct NewCanvasSheet: View {
-    let session: EditorSession
+    @ObservedObject var session: EditorSession
     var onCreate: ((Int, Int, Double, CGColor?) -> Void)? = nil
     var onOpen: (() -> Void)? = nil
     @State private var width = "1920"
@@ -116,7 +117,7 @@ struct NewCanvasSheet: View {
                             .contentShape(Rectangle())
                             .padding(.trailing, -10)
                     }
-                    .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+                    .menuStyle(.borderlessButton).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
                     .help("Preset sizes for screens and common formats")
                     .accessibilityLabel("Preset sizes")
                 }
@@ -215,6 +216,7 @@ struct NewCanvasSheet: View {
 }
 
 /// A setting that steps through its few values when clicked, shown as plain text that gains a soft pill on hover.
+@MainActor
 private struct CyclePill: View {
     let title: String
     let help: String

@@ -3,6 +3,7 @@ import SwiftUI
 
 /// The tool rail scrolls when it overflows without showing or reserving space
 /// for a macOS scroller, even when the system setting always shows scroll bars.
+@MainActor
 struct IndicatorlessScrollView<Content: View>: NSViewRepresentable {
     @ViewBuilder let content: () -> Content
 

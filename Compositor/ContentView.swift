@@ -1,13 +1,13 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+@MainActor
 struct ContentView: View {
     /// The Layers panel's width, remembered across launches.
     @AppStorage("layersPanelWidth") private var layersPanelWidth = 252.0
     @AppStorage("navigator.visible") private var showsNavigator = false
-    @Bindable var session: EditorSession
+    @ObservedObject var session: EditorSession
     var applicationDelegate: CompositorApplicationDelegate? = nil
-    @Environment(\.openWindow) private var openWindow
     @State private var canvasFrame: CGRect = .zero
     @State private var levelsPanel = FloatingPanelController(name: "levelsPanel")
     @State private var adjustmentPanel = FloatingPanelController(name: "adjustmentPanel")
@@ -17,7 +17,6 @@ struct ContentView: View {
     @State private var effectsPanel = FloatingPanelController(name: "effectsPanel")
     @State private var isDropTargeted = false
     /// The window's width, so the tab strip can use the toolbar's free space.
-    @State private var windowWidth: CGFloat = 1180
     /// A layer dragged from this canvas's own tab has nowhere to go, so the canvas doesn't light up for it.
     private var acceptsDrop: Bool {
         guard let workspace = applicationDelegate?.workspace else { return true }
@@ -156,129 +155,148 @@ struct ContentView: View {
                 Divider()
                 // Keeps its own height however short the window gets; the tools scroll instead.
                 statusBar.fixedSize(horizontal: false, vertical: true)
-                    .modifier(WidthReader(width: $windowWidth))
             }
         }
     }
 
-    // Split again for 1.1: the chain outgrew the type checker once more.
+    // Split again for 1.1: the chain outgrew the type checker once more. The toolbar and the drop handling
+    // are separate properties here because Swift 5.7's type checker is even slower with the whole chain.
     @ViewBuilder private var editorChrome: some View {
-        editorStack
-        .background(Color(white: 0.14))
-        .background {
-            if let applicationDelegate, applicationDelegate.projects.workspace == nil {
-                ProjectWindowBridge(controller: applicationDelegate.projects).frame(width: 0, height: 0)
-            }
-        }
-        .frame(minWidth: 800, minHeight: 520)
-        .coordinateSpace(name: "editor")
-        .onDrop(of: [UTType.fileURL.identifier, UTType.image.identifier, ProjectWorkspace.layerType], isTargeted: $isDropTargeted) { providers, location in
-            guard session.levels == nil, !session.isProjectBusy, !session.showsNewDocument, !session.showsImporter, session.renamingLayerID == nil else { return false }
-            let point: CGPoint?
-            if let document = session.document, canvasFrame.contains(location) {
-                point = session.viewport.documentPoint(
-                    from: CGPoint(x: location.x - canvasFrame.minX, y: location.y - canvasFrame.minY),
-                    documentSize: document.size)
-            } else { point = nil }
-            if let workspace = applicationDelegate?.workspace {
-                let destination = workspace.current.id
-                guard workspace.canSwitch, workspace.canReceiveDrag(into: destination) else { return false }
-                Task { await workspace.receiveProviders(providers, into: destination, at: point) }
-            } else {
-                Task { await ImageFileDrop.importProviders(providers, into: session, at: point) }
-            }
-            return true
-        }
-        .overlay {
-            if isDropTargeted, acceptsDrop {
-                RoundedRectangle(cornerRadius: 8).strokeBorder(Color.accentColor, lineWidth: 3)
-                    .frame(width: max(0, canvasFrame.width - 6), height: max(0, canvasFrame.height - 6))
-                    .position(x: canvasFrame.midX, y: canvasFrame.midY)
-                    .allowsHitTesting(false)
-            }
-        }
-        .onAppear { applicationDelegate?.showEditor = { openWindow(id: "editor") } }
-        .preferredColorScheme(.dark)
-        // Canvas Only (F): the canvas runs up under where the title bar was, so no gray strip is left across the top.
-        // The toolbar itself is hidden and shown by the window (see `toggleCanvasOnly`), which lays its buttons out
-        // again properly; hidden here instead, it came back with the tabs over the window buttons.
-        .ignoresSafeArea(.container, edges: session.canvasOnly ? .top : [])
-        .navigationTitle(session.projectURL?.deletingPathExtension().lastPathComponent ?? "Untitled")
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                Button { requestNewCanvas() } label: { Label("New canvas", systemImage: "plus") }
-                    .help("New canvas (⌘N)").accessibilityIdentifier("newCanvasToolbar")
-                    .disabled(session.isImporting || session.showsBusy || session.levels != nil)
-                    .modifier(NewProjectDropTarget(workspace: applicationDelegate?.workspace))
-            }
-            ToolbarSpacer(.fixed, placement: .navigation)
-            if let workspace = applicationDelegate?.workspace {
-                ToolbarItem(placement: .navigation) {
-                    ProjectTabStrip(workspace: workspace)
-                        // As wide as the toolbar allows: the window less the traffic lights and New button before it
-                        // and the zoom controls after it. Bounded, so adding tabs never pushes those aside; the
-                        // strip scrolls instead.
-                        .frame(width: max(200, windowWidth - 352), height: 34, alignment: .center)
+        editorChromeWithDrop
+            .onAppear {
+                applicationDelegate?.showEditor = {
+                    NSApp.activate(ignoringOtherApps: true)
+                    NSApp.windows.first { $0.canBecomeMain && !($0 is NSPanel) }?.makeKeyAndOrderFront(nil)
                 }
-                .sharedBackgroundVisibility(.hidden)
             }
-            // Absorb all remaining navigation-toolbar width before the zoom controls.
-            // Without this spacer, the growing tab strip pushes the primary actions left.
-            ToolbarSpacer(.flexible, placement: .navigation)
-            ToolbarItem(placement: .primaryAction) {
-                Button("Fit") { session.fit() }.help("Fit canvas in window (⌘0)")
-                    .accessibilityIdentifier("fitCanvas").disabled(session.document == nil)
-                    .padding(.horizontal, 4)
+            .preferredColorScheme(.dark)
+            // Canvas Only (F): the canvas runs up under where the title bar was, so no gray strip is left across the top.
+            // The toolbar itself is hidden and shown by the window (see `toggleCanvasOnly`), which lays its buttons out
+            // again properly; hidden here instead, it came back with the tabs over the window buttons.
+            .ignoresSafeArea(.container, edges: session.canvasOnly ? .top : [])
+            .navigationTitle(session.projectURL?.deletingPathExtension().lastPathComponent ?? "Untitled")
+            .toolbar { editorToolbar }
+    }
+
+    private var editorChromeWithDrop: some View {
+        editorChromeBase
+            .onDrop(of: [UTType.fileURL.identifier, UTType.image.identifier, ProjectWorkspace.layerType],
+                    isTargeted: $isDropTargeted, perform: handleDrop)
+            .overlay { dropHighlight }
+    }
+
+    private var editorChromeBase: some View {
+        VStack(spacing: 0) {
+            // The window's toolbar on macOS 12 does not lay out a custom view wide enough for the tabs, so the
+            // strip lives at the top of the content instead, where its width and clicks are reliable.
+            if !session.canvasOnly, let workspace = applicationDelegate?.workspace {
+                ProjectTabStrip(workspace: workspace)
+                    .frame(height: 34)
+                    .background(Color(white: 0.12))
+                Divider()
             }
-            ToolbarItem(placement: .primaryAction) {
-                Button("100%") { session.zoom(to: 1) }.help("Actual pixels (⌘1)")
-                    .accessibilityIdentifier("actualPixels").disabled(session.document == nil)
-                    .padding(.horizontal, 4)
-            }
-            ToolbarItem(placement: .primaryAction) {
-                HStack(spacing: 0) {
-                    Button { session.zoomKeyboard(by: 1) } label: {
-                        Image(systemName: "plus.magnifyingglass")
-                    }.help("Zoom in (⌘+)").disabled(session.document == nil)
-                    Button { session.zoomKeyboard(by: -1) } label: {
-                        Image(systemName: "minus.magnifyingglass")
-                    }.help("Zoom out (⌘−)").disabled(session.document == nil)
+            editorStack
+        }
+            .background(Color(white: 0.14))
+            .background {
+                if let applicationDelegate, applicationDelegate.projects.workspace == nil {
+                    ProjectWindowBridge(controller: applicationDelegate.projects).frame(width: 0, height: 0)
                 }
+            }
+            .frame(minWidth: 800, minHeight: 520)
+            .coordinateSpace(name: "editor")
+    }
+
+    @ViewBuilder private var dropHighlight: some View {
+        if isDropTargeted, acceptsDrop {
+            RoundedRectangle(cornerRadius: 8).strokeBorder(Color.accentColor, lineWidth: 3)
+                .frame(width: max(0, canvasFrame.width - 6), height: max(0, canvasFrame.height - 6))
+                .position(x: canvasFrame.midX, y: canvasFrame.midY)
+                .allowsHitTesting(false)
+        }
+    }
+
+    private func handleDrop(_ providers: [NSItemProvider], _ location: CGPoint) -> Bool {
+        guard session.levels == nil, !session.isProjectBusy, !session.showsNewDocument,
+              !session.showsImporter, session.renamingLayerID == nil else { return false }
+        let point: CGPoint?
+        if let document = session.document, canvasFrame.contains(location) {
+            point = session.viewport.documentPoint(
+                from: CGPoint(x: location.x - canvasFrame.minX, y: location.y - canvasFrame.minY),
+                documentSize: document.size)
+        } else { point = nil }
+        if let workspace = applicationDelegate?.workspace {
+            let destination = workspace.current.id
+            guard workspace.canSwitch, workspace.canReceiveDrag(into: destination) else { return false }
+            Task { await workspace.receiveProviders(providers, into: destination, at: point) }
+        } else {
+            Task { await ImageFileDrop.importProviders(providers, into: session, at: point) }
+        }
+        return true
+    }
+
+    @ToolbarContentBuilder private var editorToolbar: some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            Button { requestNewCanvas() } label: { Label("New canvas", systemImage: "plus") }
+                .help("New canvas (⌘N)").accessibilityIdentifier("newCanvasToolbar")
+                .disabled(session.isImporting || session.showsBusy || session.levels != nil)
+                .modifier(NewProjectDropTarget(workspace: applicationDelegate?.workspace))
+        }
+        // Absorb all remaining navigation-toolbar width before the zoom controls.
+        // Without this spacer, the growing tab strip pushes the primary actions left.
+        ToolbarItem(placement: .primaryAction) {
+            Button("Fit") { session.fit() }.help("Fit canvas in window (⌘0)")
+                .accessibilityIdentifier("fitCanvas").disabled(session.document == nil)
                 .padding(.horizontal, 4)
+        }
+        ToolbarItem(placement: .primaryAction) {
+            Button("100%") { session.zoom(to: 1) }.help("Actual pixels (⌘1)")
+                .accessibilityIdentifier("actualPixels").disabled(session.document == nil)
+                .padding(.horizontal, 4)
+        }
+        ToolbarItem(placement: .primaryAction) {
+            HStack(spacing: 0) {
+                Button { session.zoomKeyboard(by: 1) } label: {
+                    Image(systemName: "plus.magnifyingglass")
+                }.help("Zoom in (⌘+)").disabled(session.document == nil)
+                Button { session.zoomKeyboard(by: -1) } label: {
+                    Image(systemName: "minus.magnifyingglass")
+                }.help("Zoom out (⌘−)").disabled(session.document == nil)
             }
+            .padding(.horizontal, 4)
         }
     }
 
     var body: some View {
         editorChrome
-        .onChange(of: session.levels == nil) { _, closed in
+        .compatOnChange(of: session.levels == nil) { _, closed in
             if closed { levelsPanel.close() }
             else {
                 levelsPanel.onClose = { session.cancelLevels() }
                 levelsPanel.show(title: "Levels", content: LevelsSheet(session: session))
             }
         }
-        .onChange(of: session.colorRange == nil) { _, closed in
+        .compatOnChange(of: session.colorRange == nil) { _, closed in
             if closed { colorRangePanel.close() }
             else {
                 colorRangePanel.onClose = { session.cancelColorRange() }
                 colorRangePanel.show(title: "Color Range", content: ColorRangeSheet(session: session))
             }
         }
-        .onChange(of: session.hueSaturation == nil) { _, closed in
+        .compatOnChange(of: session.hueSaturation == nil) { _, closed in
             if closed { adjustmentPanel.close() }
             else {
                 adjustmentPanel.onClose = { session.cancelHueSaturation() }
                 adjustmentPanel.show(title: "Hue/Saturation", content: HueSaturationSheet(session: session))
             }
         }
-        .onChange(of: session.effectsEditing) { _, selection in
+        .compatOnChange(of: session.effectsEditing) { _, selection in
             if let selection {
                 effectsPanel.onClose = { session.finishEffectsEditing(commit: false) }
                 effectsPanel.show(title: selection.kind.rawValue, content: EffectsSheet(session: session, kind: selection.kind))
             } else { effectsPanel.close() }
         }
-        .onChange(of: session.document?.layers) { _, layers in
+        .compatOnChange(of: session.document?.layers) { _, layers in
             if let editing = session.effectsEditing,
                layers?.first(where: { $0.id == editing.layerID })?.effects?.contains(editing.kind) != true {
                 if let picker = session.colorPicker, case .effect = picker.target { session.closeColorPicker(commit: false) }
@@ -286,7 +304,7 @@ struct ContentView: View {
                 session.effectsEditingOriginal = nil
             }
         }
-        .onChange(of: session.selectionAmountOperation) { _, operation in
+        .compatOnChange(of: session.selectionAmountOperation) { _, operation in
             if let operation {
                 selectionAmountPanel.onClose = { session.selectionAmountOperation = nil }
                 selectionAmountPanel.show(title: operation.rawValue + " Selection",
@@ -294,7 +312,7 @@ struct ContentView: View {
             } else { selectionAmountPanel.close() }
         }
         // Last Filter applies without the panel.
-        .onChange(of: session.filterEdit == nil || session.filterEdit?.repeating == true) { _, closed in
+        .compatOnChange(of: session.filterEdit == nil || session.filterEdit?.repeating == true) { _, closed in
             if closed { filterPanel.close() }
             else {
                 filterPanel.onClose = { session.cancelFilter() }
@@ -303,7 +321,7 @@ struct ContentView: View {
                                  placement: placement)
             }
         }
-        .onChange(of: session.document == nil) { _, empty in
+        .compatOnChange(of: session.document == nil) { _, empty in
             if !empty { session.canvasFocusRequest += 1 }
         }
         // A folder brings in the images directly inside it.
@@ -364,6 +382,7 @@ struct ContentView: View {
 }
 
 /// A panel's divider that resizes the panel to its right: drag left to widen, right to narrow, within `range`.
+@MainActor
 private struct PanelResizeEdge: View {
     @Binding var width: Double
     let range: ClosedRange<Double>
@@ -385,12 +404,17 @@ private struct PanelResizeEdge: View {
     }
 }
 
+@MainActor
 extension View {
     /// Bordered buttons and pop-up menus drawn as capsules throughout the app. Borderless and plain buttons (the tool
     /// rail, the Layers panel footer) have no border to shape, so they're unaffected.
-    func roundedControls() -> some View { buttonBorderShape(.capsule) }
+    func roundedControls() -> some View {
+        // `ButtonBorderShape.capsule` arrived after macOS 12; the default shape is the native look there.
+        self
+    }
 }
 
+@MainActor
 extension View {
     /// Return or Escape in a property field gives up its focus and hands it back to the canvas, so a tool's key
     /// works straight away instead of typing into the field.
@@ -402,7 +426,7 @@ extension View {
 
 /// What a field's key monitor reads. The monitor outlives the view value that installed it, so reading the value
 /// and applying the step go through here, refreshed on every redraw.
-@MainActor final class ArrowStepper {
+final class ArrowStepper {
     var editing = false
     var value: () -> Double = { 0 }
     var change: (Double) -> Void = { _ in }
@@ -433,6 +457,7 @@ extension View {
 
 /// Up and Down nudge the value in a focused property field, Shift by ten times as much — a text field takes the
 /// arrow keys for its insertion point, so they are caught while it holds focus.
+@MainActor
 private struct ArrowStepping: ViewModifier {
     let step: Double
     let value: () -> Double
@@ -442,13 +467,13 @@ private struct ArrowStepping: ViewModifier {
     func body(content: Content) -> some View {
         content
             .focused($focused)
-            .onChange(of: focused) { _, editing in
+            .compatOnChange(of: focused) { _, editing in
                 stepper.editing = editing
                 editing ? stepper.listen(step: step) : stepper.stopListening()
             }
             .onDisappear { stepper.stopListening() }
             .onAppear { refresh() }
-            .onChange(of: value()) { _, _ in refresh() }
+            .compatOnChange(of: value()) { _, _ in refresh() }
     }
     private func refresh() {
         stepper.value = value
@@ -456,6 +481,7 @@ private struct ArrowStepping: ViewModifier {
     }
 }
 
+@MainActor
 extension View {
     /// Up and Down step this field's value; each field's own binding keeps it in range.
     func arrowSteps(_ step: Double = 1, value: @escaping () -> Double, change: @escaping (Double) -> Void) -> some View {
@@ -465,21 +491,13 @@ extension View {
     func arrowSteps(_ step: Double = 1, editing: Bool, stepper: ArrowStepper,
                     value: @escaping () -> Double, change: @escaping (Double) -> Void) -> some View {
         onAppear { stepper.value = value; stepper.change = change }
-            .onChange(of: value()) { _, _ in stepper.value = value; stepper.change = change }
-            .onChange(of: editing) { _, active in
+            .compatOnChange(of: value()) { _, _ in stepper.value = value; stepper.change = change }
+            .compatOnChange(of: editing) { _, active in
                 stepper.editing = active
                 stepper.value = value
                 stepper.change = change
                 active ? stepper.listen(step: step) : stepper.stopListening()
             }
             .onDisappear { stepper.stopListening() }
-    }
-}
-
-/// Reports the width it is laid out at. Kept out of the editor's body, whose type-checking is already near its limit.
-private struct WidthReader: ViewModifier {
-    @Binding var width: CGFloat
-    func body(content: Content) -> some View {
-        content.onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
     }
 }

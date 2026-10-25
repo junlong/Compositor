@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated enum LayerHierarchy {
+enum LayerHierarchy {
     struct Entry {
         let layer: ProjectLayerRecord
         let depth: Int
@@ -50,7 +50,7 @@ nonisolated enum LayerHierarchy {
 /// shows at 25%, while the layer itself still reads 50% in the panel. Folders are pass-through —
 /// what's inside is drawn straight onto what is below, never composited as a unit — so the
 /// folder's opacity is applied to each of those layers rather than to the folder as a whole.
-nonisolated enum LayerOpacity {
+enum LayerOpacity {
     static func effective(_ own: Double, parent: UUID?,
                           folder: (UUID) -> (opacity: Double, parentID: UUID?)?) -> Double {
         var opacity = own, id = parent, depth = 0
@@ -73,7 +73,7 @@ extension ImageLayer {
             imageFile: asset?.file(for: id), parentID: parentID, isGroup: isGroup, opacity: opacity, blendMode: blendMode, maskFile: mask == nil ? nil : "\(id.uuidString).mask.png", maskEnabled: mask?.isEnabled, maskSourceID: maskSourceID, adjustment: adjustment, maskPlacement: mask?.placement, maskLinked: mask?.isLinked)
     }
 }
-nonisolated extension ProjectLayerRecord {
+extension ProjectLayerRecord {
     /// The opacity this layer is drawn at, folders included (see LayerOpacity).
     func effectiveOpacity(in byID: [UUID: ProjectLayerRecord]) -> Double {
         LayerOpacity.effective(opacity ?? 1, parent: parentID) { byID[$0].map { ($0.opacity ?? 1, $0.parentID) } }
@@ -98,7 +98,7 @@ extension CanvasDocument {
 /// The layer hierarchy worked out from only what shapes it — each layer's id, folder, and visibility — and kept until
 /// one of those changes. The canvas asks for it several times on every event; rebuilt each time from whole layer
 /// records, a document of hundreds of layers spent most of its time on it.
-nonisolated enum LayerOrder {
+enum LayerOrder {
     struct Node: Equatable {
         let id: UUID
         let parentID: UUID?
@@ -114,7 +114,7 @@ nonisolated enum LayerOrder {
         let drawn: [UUID]
     }
     private static let lock = NSLock()
-    nonisolated(unsafe) private static var last: (nodes: [Node], result: Result)?
+    private static var last: (nodes: [Node], result: Result)?
 
     static func resolve(_ layers: [ImageLayer]) -> Result {
         let nodes = layers.map { Node(id: $0.id, parentID: $0.parentID, isGroup: $0.isGroup, isVisible: $0.isVisible) }

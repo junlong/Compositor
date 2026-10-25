@@ -3,8 +3,9 @@ import SwiftUI
 /// A RAW file holds more range than a layer can, so the choice of what to keep is made here rather
 /// than assumed. The preview develops at screen size while the sliders move; the import then
 /// develops the full frame once.
+@MainActor
 struct RawDevelopSheet: View {
-    let session: EditorSession
+    @ObservedObject var session: EditorSession
     let url: URL
     @State private var settings: RawDevelopSettings
     @State private var preview: CGImage?
@@ -74,7 +75,7 @@ struct RawDevelopSheet: View {
         .padding(24).fixedSize()
         .interactiveDismissDisabled(session.rawImporting)
         .task(id: revision) { await refreshPreview() }
-        .onChange(of: settings) { _, _ in revision += 1 }
+        .compatOnChange(of: settings) { _, _ in revision += 1 }
     }
 
     /// Develops a screen-sized copy. `task(id:)` cancels the previous one, so dragging a slider
@@ -82,7 +83,7 @@ struct RawDevelopSheet: View {
     private func refreshPreview() async {
         // Just enough to coalesce a burst of slider changes; the render itself is nearly free once
         // the file's filter is warm (see RawImporter.Queue).
-        if revision > 0 { try? await Task.sleep(for: .milliseconds(60)) }
+        if revision > 0 { try? await Task.sleep(nanoseconds: UInt64(60) * 1_000_000) }
         guard !Task.isCancelled else { return }
         working = true
         defer { working = false }
@@ -105,6 +106,7 @@ struct RawDevelopSheet: View {
     }
 }
 
+@MainActor
 extension View {
     func rawDevelopSheet(_ session: EditorSession) -> some View {
         sheet(isPresented: Binding(

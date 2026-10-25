@@ -1,11 +1,11 @@
 import AppKit
-import Observation
+import Combine
 
-nonisolated enum LevelsChannel: String, CaseIterable, Sendable, Codable {
+enum LevelsChannel: String, CaseIterable, Sendable, Codable {
     case rgb = "RGB", red = "Red", green = "Green", blue = "Blue"
     var index: Int { Self.allCases.firstIndex(of: self)! }
 }
-nonisolated struct LevelRange: Equatable, Sendable, Codable {
+struct LevelRange: Equatable, Sendable, Codable {
     var black: Double = 0
     var gamma: Double = 1
     var white: Double = 255
@@ -29,7 +29,7 @@ nonisolated struct LevelRange: Equatable, Sendable, Codable {
         return (s.outputBlack + pow(input, 1 / s.gamma) * (s.outputWhite - s.outputBlack)) / 255
     }
 }
-nonisolated struct LevelsSettings: Equatable, Sendable, Codable {
+struct LevelsSettings: Equatable, Sendable, Codable {
     var channel: LevelsChannel = .rgb
     var ranges = Array(repeating: LevelRange(), count: 4)
     var current: LevelRange {
@@ -44,7 +44,7 @@ nonisolated struct LevelsSettings: Equatable, Sendable, Codable {
 }
 /// Display-only vertical scaling. Keep linear bin ratios, but cap isolated spikes
 /// so large solid backgrounds cannot flatten the useful tonal distribution.
-nonisolated enum LevelsHistogramDisplay {
+enum LevelsHistogramDisplay {
     static func scale(for bins: [Double]) -> Double {
         let peak = bins.filter { $0.isFinite && $0 > 0 }.max() ?? 0
         guard peak > 0 else { return 0 }
@@ -55,13 +55,13 @@ nonisolated enum LevelsHistogramDisplay {
     }
 }
 
-nonisolated struct LevelsJob: @unchecked Sendable {
+struct LevelsJob: @unchecked Sendable {
     let image: CGImage
     let settings: LevelsSettings
     let selection: SelectionClip?
     let mapping: CGAffineTransform
 }
-nonisolated enum LevelsFilter {
+enum LevelsFilter {
     static func run(_ job: LevelsJob) throws -> CGImage {
         if job.settings.isIdentity { return job.image }
         let context = try BrushRaster.copy(job.image)
@@ -101,8 +101,9 @@ nonisolated enum LevelsFilter {
     }
 }
 
-@Observable
-final class LevelsEdit {
+
+@MainActor
+final class LevelsEdit: ObservableObject {
     let layerID: UUID
     let original: ImportedImage
     let transform: LayerTransform
@@ -110,18 +111,18 @@ final class LevelsEdit {
     let mapping: CGAffineTransform
     let previewSource: CGImage
     /// An HDR layer's pixels at `previewSource`'s size: its preview is made from them, as OK makes the result.
-    var hdrPreviewSource: CGImage?
+    @Published var hdrPreviewSource: CGImage?
     let previewMapping: CGAffineTransform
-    var sampleMode: LevelsSample?
-    var settings = LevelsSettings()
-    var preview = true
-    var committing = false
-    var histogram: [[Double]] = Array(repeating: Array(repeating: 0, count: 256), count: 4)
-    var histogramReady = false
-    @ObservationIgnored var preparedPreview: CGImage?
-    @ObservationIgnored var pending: LevelsJob?
-    @ObservationIgnored var previewTask: Task<Void, Never>?
-    @ObservationIgnored var histogramTask: Task<Void, Never>?
+    @Published var sampleMode: LevelsSample?
+    @Published var settings = LevelsSettings()
+    @Published var preview = true
+    @Published var committing = false
+    @Published var histogram: [[Double]] = Array(repeating: Array(repeating: 0, count: 256), count: 4)
+    @Published var histogramReady = false
+    var preparedPreview: CGImage?
+    var pending: LevelsJob?
+    var previewTask: Task<Void, Never>?
+    var histogramTask: Task<Void, Never>?
 
     init(layer: ImageLayer, selection: SelectionClip?) throws {
         layerID = layer.id; original = layer.asset!; transform = layer.transform; self.selection = selection

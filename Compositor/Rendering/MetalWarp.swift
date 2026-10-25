@@ -5,7 +5,7 @@ import Metal
 /// canvas draws from, so the stroke never copies the whole document per pointer move — it used to make a new image of
 /// it and upload that, which on a large document cost far more than the dabs. The pixels come back to the CPU once,
 /// when the stroke ends (or for a frame the Core Graphics canvas draws).
-@MainActor final class MetalWarp {
+final class MetalWarp {
     let width: Int
     let height: Int
     let texture: MTLTexture

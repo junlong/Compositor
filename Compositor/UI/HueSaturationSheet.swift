@@ -2,8 +2,9 @@ import SwiftUI
 
 /// Reads and writes the open edit's settings, so sampling from the canvas and the panel's
 /// own controls always agree.
+@MainActor
 struct HueSaturationSheet: View {
-    @Bindable var session: EditorSession
+    @ObservedObject var session: EditorSession
 
     private var edit: HueSaturationEdit? { session.hueSaturation }
     private var current: HueSaturationSettings { edit?.settings ?? HueSaturationSettings() }
@@ -32,43 +33,48 @@ struct HueSaturationSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                Picker("Range", selection: settings.range) {
-                    ForEach(ColorRange.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            Group {
+
+                HStack(spacing: 12) {
+                    Picker("Range", selection: settings.range) {
+                        ForEach(ColorRange.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.menu).frame(width: 160).labelsHidden().disabled(current.colorize)
+                    Spacer()
+                    samplingControls
                 }
-                .pickerStyle(.menu).frame(width: 160).labelsHidden().disabled(current.colorize)
-                Spacer()
-                samplingControls
+                slider("Hue", value: settings.hue, range: hueRange, unit: "°", track: hueTrack, reset: resetValues.hue)
+                slider("Saturation", value: settings.saturation, range: saturationRange, unit: "", track: saturationTrack,
+                       reset: resetValues.saturation)
+                slider("Lightness", value: settings.lightness, range: -100...100, unit: "",
+                       track: .opposing(.black, .white), reset: resetValues.lightness)
+                if showsSpectrum {
+                    SpectrumEditor(settings: settings)
+                    Toggle("Apply outside this range instead", isOn: settings.invertRange)
+                }
+                HStack(spacing: 18) {
+                    Toggle("Colorize", isOn: Binding(get: { current.colorize }, set: { colorize in
+                        // Photoshop starts colorizing at hue 0, saturation 25.
+                        settings.wrappedValue = colorize ? .colorizeStart : HueSaturationSettings()
+                    }))
+                    Toggle("Preview", isOn: preview)
+                    Button("Reset") { settings.wrappedValue = current.colorize ? .colorizeStart : HueSaturationSettings() }
+                    Spacer()
+                }
             }
-            slider("Hue", value: settings.hue, range: hueRange, unit: "°", track: hueTrack, reset: resetValues.hue)
-            slider("Saturation", value: settings.saturation, range: saturationRange, unit: "", track: saturationTrack,
-                   reset: resetValues.saturation)
-            slider("Lightness", value: settings.lightness, range: -100...100, unit: "",
-                   track: .opposing(.black, .white), reset: resetValues.lightness)
-            if showsSpectrum {
-                SpectrumEditor(settings: settings)
-                Toggle("Apply outside this range instead", isOn: settings.invertRange)
+            Group {
+                if session.adjustmentOriginal == nil && session.selection != nil {
+                    Text("Limited to the selection").font(.callout).foregroundStyle(.secondary)
+                }
+                Divider()
+                HStack {
+                    Button("Cancel") { session.cancelHueSaturation() }.configuredNativeShortcut(.escape)
+                    Spacer()
+                    Button("OK") { Task { await session.commitHueSaturation() } }
+                        .configuredNativeShortcut(.return).buttonStyle(.borderedProminent)
+                }
             }
-            HStack(spacing: 18) {
-                Toggle("Colorize", isOn: Binding(get: { current.colorize }, set: { colorize in
-                    // Photoshop starts colorizing at hue 0, saturation 25.
-                    settings.wrappedValue = colorize ? .colorizeStart : HueSaturationSettings()
-                }))
-                Toggle("Preview", isOn: preview)
-                Button("Reset") { settings.wrappedValue = current.colorize ? .colorizeStart : HueSaturationSettings() }
-                Spacer()
             }
-            if session.adjustmentOriginal == nil && session.selection != nil {
-                Text("Limited to the selection").font(.callout).foregroundStyle(.secondary)
-            }
-            Divider()
-            HStack {
-                Button("Cancel") { session.cancelHueSaturation() }.configuredNativeShortcut(.escape)
-                Spacer()
-                Button("OK") { Task { await session.commitHueSaturation() } }
-                    .configuredNativeShortcut(.return).buttonStyle(.borderedProminent)
-            }
-        }
         .padding(24).frame(width: 460).fixedSize()
     }
 
@@ -144,6 +150,7 @@ struct HueSaturationSheet: View {
 
 /// Photoshop's two spectrum bars: the hues as they are, the handles for the selected
 /// range's band, and the hues as the adjustment leaves them.
+@MainActor
 struct SpectrumEditor: View {
     @Binding var settings: HueSaturationSettings
     @State private var dragging: Int?

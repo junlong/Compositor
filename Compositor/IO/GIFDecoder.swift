@@ -4,7 +4,7 @@ import ImageIO
 import UniformTypeIdentifiers
 
 /// Reads immutable bytes rather than a live file, so frames survive source deletion and atomic project saves.
-nonisolated enum GIFDecoder {
+enum GIFDecoder {
     static func source(_ data: Data, name: String) throws -> GIFSource {
         guard !data.isEmpty, data.count <= GIFSource.byteLimit else { throw ImageImportError.tooLarge }
         return try autoreleasepool {

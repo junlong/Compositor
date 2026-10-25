@@ -1,7 +1,7 @@
 import AppKit
 
 /// Clone Stamp's options-bar settings.
-nonisolated struct CloneSettings: Equatable, Sendable {
+struct CloneSettings: Equatable, Sendable {
     /// The source moves with the brush and keeps its offset between strokes; off, every stroke
     /// starts again at the source point.
     var aligned = true

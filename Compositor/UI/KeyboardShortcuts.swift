@@ -43,7 +43,7 @@ struct ShortcutChord: Codable, Equatable, Hashable {
     }
     /// A key equivalent as the list records it: SwiftUI's `.delete` (U+0008) is the Delete key, recorded as U+007F.
     static func recorded(_ key: KeyEquivalent) -> String {
-        key == .delete ? "\u{7f}" : String(key.character)
+        key.character == "\u{8}" ? "\u{7f}" : String(key.character)
     }
     var cocoaModifiers: NSEvent.ModifierFlags {
         var flags: NSEvent.ModifierFlags = []
@@ -143,11 +143,12 @@ struct ShortcutDefinition: Identifiable {
     }()
 }
 
-@MainActor @Observable
-final class ShortcutSettings {
+
+@MainActor
+final class ShortcutSettings: ObservableObject {
     static let shared = ShortcutSettings()
-    private(set) var overrides: [String: ShortcutChord] = [:]
-    @ObservationIgnored private let panel = FloatingPanelController(name: "keyboardShortcuts")
+    @Published private(set) var overrides: [String: ShortcutChord] = [:]
+    private let panel = FloatingPanelController(name: "keyboardShortcuts")
     private static let storageKey = "keyboardShortcuts.v1"
     private let defaults: UserDefaults
     /// `defaults` is the app's own everywhere but tests, which use a throwaway suite.
@@ -248,6 +249,7 @@ final class ShortcutSettings {
     }
 }
 
+@MainActor
 extension View {
     func configuredNativeShortcut(_ key: KeyEquivalent, modifiers: EventModifiers = []) -> some View {
         // nil when the person cleared it: no key at all.
@@ -262,6 +264,7 @@ extension View {
     }
 }
 
+@MainActor
 private struct KeyboardShortcutsSheet: View {
     let settings: ShortcutSettings
     @State private var draft: [String: ShortcutChord]
@@ -328,6 +331,7 @@ private struct KeyboardShortcutsSheet: View {
     }
 }
 
+@MainActor
 private struct ShortcutRecorder: NSViewRepresentable {
     let chord: ShortcutChord
     let recording: Bool

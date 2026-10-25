@@ -1,10 +1,10 @@
 import AppKit
 
-nonisolated enum TextAlignment: String, Codable, CaseIterable, Sendable {
+enum TextAlignment: String, Codable, CaseIterable, Sendable {
     case left = "Left", center = "Center", right = "Right"
 }
 
-nonisolated struct LayerTextStyle: Codable, Equatable, Sendable {
+struct LayerTextStyle: Codable, Equatable, Sendable {
     var content = "Text"
     var fontName = "Helvetica"
     var fontSize: CGFloat = 72
@@ -187,7 +187,7 @@ nonisolated struct LayerTextStyle: Codable, Equatable, Sendable {
     }
 }
 
-nonisolated struct LayerTextColorRun: Codable, Equatable, Sendable {
+struct LayerTextColorRun: Codable, Equatable, Sendable {
     var location: Int
     var length: Int
     var red: CGFloat
@@ -195,7 +195,7 @@ nonisolated struct LayerTextColorRun: Codable, Equatable, Sendable {
     var blue: CGFloat
 }
 
-nonisolated struct LayerTextFontRun: Codable, Equatable, Sendable {
+struct LayerTextFontRun: Codable, Equatable, Sendable {
     var location: Int
     var length: Int
     var fontName: String
@@ -203,7 +203,7 @@ nonisolated struct LayerTextFontRun: Codable, Equatable, Sendable {
 
 /// The cached raster participates in the existing compositor. Pixel edits rasterize the layer;
 /// transforms and masks keep the source text editable, just as shape layers keep their source.
-nonisolated struct LayerText: Equatable, @unchecked Sendable {
+struct LayerText: Equatable, @unchecked Sendable {
     var style: LayerTextStyle
     let image: CGImage
     static func == (lhs: Self, rhs: Self) -> Bool { lhs.style == rhs.style && lhs.image === rhs.image }
@@ -417,7 +417,7 @@ extension EditorSession {
 
     /// How big point text is: what it measures, plus its padding. A caret's worth of width so an empty line still
     /// has somewhere to type.
-    static func textBoxSize(_ style: LayerTextStyle) -> CGSize {
+    nonisolated static func textBoxSize(_ style: LayerTextStyle) -> CGSize {
         if let boxSize = style.boxSize { return boxSize }
         let string = attributedText(style)
         let padding = LayerTextStyle.padding
@@ -429,7 +429,7 @@ extension EditorSession {
     }
 
     /// The text as it is drawn and measured, with each letter's own face and color.
-    static func attributedText(_ style: LayerTextStyle) -> NSMutableAttributedString {
+    nonisolated static func attributedText(_ style: LayerTextStyle) -> NSMutableAttributedString {
         let string = NSMutableAttributedString(string: style.content, attributes: textAttributes(style))
         for run in style.fontRuns ?? [] where Self.containsTextRun(run.location, run.length, in: string.length) {
             let font = NSFont(name: run.fontName, size: style.fontSize) ?? NSFont.systemFont(ofSize: style.fontSize)
@@ -442,11 +442,11 @@ extension EditorSession {
         return string
     }
 
-    static func containsTextRun(_ location: Int, _ length: Int, in total: Int) -> Bool {
+    nonisolated static func containsTextRun(_ location: Int, _ length: Int, in total: Int) -> Bool {
         length > 0 && location >= 0 && location <= total - length
     }
 
-    static func textImage(_ style: LayerTextStyle) throws -> CGImage {
+    nonisolated static func textImage(_ style: LayerTextStyle) throws -> CGImage {
         guard style.isValid else { throw ProjectError.invalid }
         let string = attributedText(style)
         let padding = LayerTextStyle.padding

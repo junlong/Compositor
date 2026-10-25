@@ -3,8 +3,9 @@ import SwiftUI
 /// Adds a mask in one click, as Photoshop's button does: all white, or with a selection, revealing just the
 /// selection. Option-click adds the opposite: all black, or hiding the selection.
 /// Enable/Disable and Delete live in the layer's context menu.
+@MainActor
 struct LayerMaskMenu: View {
-    let session: EditorSession
+    @ObservedObject var session: EditorSession
     var body: some View {
         Button {
             session.addMask(revealing: NSApp.currentEvent?.modifierFlags.contains(.option) != true)
@@ -19,8 +20,9 @@ struct LayerMaskMenu: View {
 
 /// Over the canvas while it shows a mask by itself: whose mask it is, and a way back to the composite besides
 /// Option-clicking the thumbnail again. Built in AppKit, as the canvas under it is, so its button gets its clicks.
+@MainActor
 struct MaskAloneBadge: NSViewRepresentable {
-    let session: EditorSession
+    @ObservedObject var session: EditorSession
     let layer: ImageLayer
     func makeNSView(context: Context) -> CanvasPillView {
         CanvasPillView(symbol: "rectangle.inset.filled", closeLabel: "Stop viewing the mask",
@@ -34,8 +36,9 @@ struct MaskAloneBadge: NSViewRepresentable {
 
 /// Over the canvas while it proofs CMYK (View › CMYK › Proof Colors) or shows its gamut warning: one pill each, naming
 /// the profile, with a way to turn that one off.
+@MainActor
 struct ProofBadge: NSViewRepresentable {
-    let session: EditorSession
+    @ObservedObject var session: EditorSession
     /// The gamut warning's pill rather than the proof's.
     var gamut = false
     func makeNSView(context: Context) -> CanvasPillView {

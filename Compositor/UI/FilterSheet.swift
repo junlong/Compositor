@@ -2,8 +2,9 @@ import AppKit
 import SwiftUI
 
 /// The open filter's panel: its settings, Preview, and Cancel / OK.
+@MainActor
 struct FilterSheet: View {
-    @Bindable var session: EditorSession
+    @ObservedObject var session: EditorSession
     private var edit: FilterEdit? { session.filterEdit }
     private var settings: FilterSettings { edit?.settings ?? FilterSettings() }
     private func update(_ change: (inout FilterSettings) -> Void) {
@@ -47,18 +48,24 @@ struct FilterSheet: View {
                 CameraRawControls(session: session)
                     .frame(maxHeight: .infinity, alignment: .top)
             case .colorBalance:
-                Text("Shadows").font(.headline)
-                control("Cyan / Red", \.colorBalance.shadowCyanRed, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.cyanRedTrack)
-                control("Magenta / Green", \.colorBalance.shadowMagentaGreen, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.magentaGreenTrack)
-                control("Yellow / Blue", \.colorBalance.shadowYellowBlue, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.yellowBlueTrack)
-                Text("Midtones").font(.headline)
-                control("Cyan / Red", \.colorBalance.midCyanRed, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.cyanRedTrack)
-                control("Magenta / Green", \.colorBalance.midMagentaGreen, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.magentaGreenTrack)
-                control("Yellow / Blue", \.colorBalance.midYellowBlue, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.yellowBlueTrack)
-                Text("Highlights").font(.headline)
-                control("Cyan / Red", \.colorBalance.highlightCyanRed, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.cyanRedTrack)
-                control("Magenta / Green", \.colorBalance.highlightMagentaGreen, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.magentaGreenTrack)
-                control("Yellow / Blue", \.colorBalance.highlightYellowBlue, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.yellowBlueTrack)
+                Group {
+                    Text("Shadows").font(.headline)
+                    control("Cyan / Red", \.colorBalance.shadowCyanRed, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.cyanRedTrack)
+                    control("Magenta / Green", \.colorBalance.shadowMagentaGreen, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.magentaGreenTrack)
+                    control("Yellow / Blue", \.colorBalance.shadowYellowBlue, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.yellowBlueTrack)
+                }
+                Group {
+                    Text("Midtones").font(.headline)
+                    control("Cyan / Red", \.colorBalance.midCyanRed, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.cyanRedTrack)
+                    control("Magenta / Green", \.colorBalance.midMagentaGreen, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.magentaGreenTrack)
+                    control("Yellow / Blue", \.colorBalance.midYellowBlue, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.yellowBlueTrack)
+                }
+                Group {
+                    Text("Highlights").font(.headline)
+                    control("Cyan / Red", \.colorBalance.highlightCyanRed, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.cyanRedTrack)
+                    control("Magenta / Green", \.colorBalance.highlightMagentaGreen, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.magentaGreenTrack)
+                    control("Yellow / Blue", \.colorBalance.highlightYellowBlue, range: ColorBalanceSettings.range, unit: "", decimals: 0, logarithmic: false, track: Self.yellowBlueTrack)
+                }
                 Toggle("Preserve Luminosity", isOn: flag(\.colorBalance.preserveLuminosity))
                     .help("Put each pixel's brightness back afterwards, so only the color moves")
             case .grain:
@@ -229,7 +236,7 @@ struct FilterSheet: View {
 
         .disabled(edit?.committing == true)
         // Filter colors preview live while the app's color picker is open.
-        .onChange(of: session.colorPicker?.color) { _, _ in
+        .compatOnChange(of: session.colorPicker?.color) { _, _ in
             session.previewGradientMapColor()
             session.previewVignetteColor()
             session.previewDitherColor()
@@ -237,6 +244,11 @@ struct FilterSheet: View {
     }
 
     @ViewBuilder private var ditherControls: some View {
+        ditherStyleControls
+        ditherToneControls
+    }
+
+    @ViewBuilder private var ditherStyleControls: some View {
         let dither = settings.dither
         Picker("Style", selection: Binding(get: { dither.style }, set: { new in update { $0.dither.style = new } })) {
             ForEach(DitherStyle.groups.indices, id: \.self) { group in
@@ -245,8 +257,8 @@ struct FilterSheet: View {
             }
         }
         if dither.style.usesPixelSize {
-        control("Pixel Size", \.dither.pixelSize, range: DitherSettings.pixelSizeRange, unit: "px", decimals: 0, logarithmic: false)
-            .help("Make each dithered pixel this many pixels across, for a chunky old-screen look")
+            control("Pixel Size", \.dither.pixelSize, range: DitherSettings.pixelSizeRange, unit: "px", decimals: 0, logarithmic: false)
+                .help("Make each dithered pixel this many pixels across, for a chunky old-screen look")
         }
         if dither.style == .ascii {
             control("Text Size", \.dither.textSize, range: DitherSettings.textSizeRange, unit: "px", decimals: 0, logarithmic: false)
@@ -266,6 +278,10 @@ struct FilterSheet: View {
             }
             .help("The characters to draw with, in any order: each spot gets the one whose ink best matches its tone")
         }
+    }
+
+    @ViewBuilder private var ditherToneControls: some View {
+        let dither = settings.dither
         if dither.style.hasTones {
             control("Tones", \.dither.levels, range: DitherSettings.levelsRange, unit: "", decimals: 0, logarithmic: false)
                 .help("Tones per channel: 2 is pure black and white")
@@ -277,8 +293,14 @@ struct FilterSheet: View {
         control("Density", \.dither.density, range: -100...100, unit: "", decimals: 0, logarithmic: false)
             .help("More ink (darker) or less before dithering")
         control("Contrast", \.dither.contrast, range: -100...100, unit: "", decimals: 0, logarithmic: false)
+        ditherColorControls
+
+    }
+
+    @ViewBuilder private var ditherColorControls: some View {
         // A menu, like Style: the three choices as segments are wider than the panel, which then flips between
         // squeezing the row and wrapping it, resizing itself at every slider step.
+        let dither = settings.dither
         Picker("Colors", selection: Binding(get: { dither.colors }, set: { new in update { $0.dither.colors = new } })) {
             ForEach(DitherColors.allCases, id: \.self) { Text($0.rawValue).tag($0) }
         }
@@ -307,6 +329,7 @@ struct FilterSheet: View {
 
     @ViewBuilder private var scanlinesControls: some View {
         let lines = settings.scanlines
+        Group {
         control("Line Spacing", \.scanlines.lineSpacing, range: ScanlinesSettings.lineSpacingRange, unit: "px", decimals: 0, logarithmic: false)
             .help("How far apart the screen's lines are")
         control("Thickness", \.scanlines.thickness, range: 5...100, unit: "%", decimals: 0, logarithmic: false)
@@ -323,6 +346,8 @@ struct FilterSheet: View {
             .help("Draw no line where the picture is darker than this, leaving the screen dark")
         control("Wobble", \.scanlines.wobble, range: ScanlinesSettings.wobbleRange, unit: "px", decimals: 0, logarithmic: false)
             .help("Make the lines waver sideways down the screen, like a CRT losing sync")
+        }
+        Group {
         control("Color Split", \.scanlines.split, range: ScanlinesSettings.splitRange, unit: "px", decimals: 0, logarithmic: false)
             .help("Move the red and blue apart, for colored fringes on the lines")
         control("Density", \.scanlines.density, range: -100...100, unit: "", decimals: 0, logarithmic: false)
@@ -330,6 +355,7 @@ struct FilterSheet: View {
         control("Contrast", \.scanlines.contrast, range: -100...100, unit: "", decimals: 0, logarithmic: false)
         control("Black Level", \.scanlines.blackLevel, range: 0...100, unit: "%", decimals: 0, logarithmic: false)
             .help("How bright the lines are where the picture is black, so they show even over black")
+        }
         Picker("Colors", selection: Binding(get: { lines.colors }, set: { new in update { $0.scanlines.colors = new } })) {
             ForEach(DitherColors.allCases, id: \.self) { Text($0.rawValue).tag($0) }
         }
@@ -485,6 +511,7 @@ struct FilterSheet: View {
 
 /// Gradient Map's two colors, the gradient they make, and Reverse. The colors are swatches like the
 /// tool rail's, and open the app's own color picker.
+@MainActor
 struct GradientMapControls: View {
     @Binding var settings: GradientMapSettings
     /// Opens the color picker on an end: false for Shadows, true for Highlights.

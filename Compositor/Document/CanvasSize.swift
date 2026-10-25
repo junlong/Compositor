@@ -1,11 +1,11 @@
 import Foundation
 import CoreGraphics
 
-nonisolated enum CanvasUnit: String, CaseIterable, Sendable {
+enum CanvasUnit: String, CaseIterable, Sendable {
     case pixels = "Pixels", percent = "Percent", inches = "Inches", centimeters = "Centimeters"
 }
 
-nonisolated struct CanvasSizeDraft {
+struct CanvasSizeDraft {
     let originalWidth: Int
     let originalHeight: Int
     let resolution: Double
@@ -59,7 +59,7 @@ nonisolated struct CanvasSizeDraft {
     }
 }
 
-nonisolated struct CanvasSizeOptions: Sendable {
+struct CanvasSizeOptions: Sendable {
     let width: Int
     let height: Int
     var anchor = 4 // Row-major, top-left through bottom-right.
@@ -75,7 +75,7 @@ nonisolated struct CanvasSizeOptions: Sendable {
     }
 }
 
-nonisolated struct CanvasExtensionColor: Sendable {
+struct CanvasExtensionColor: Sendable {
     let red: CGFloat
     let green: CGFloat
     let blue: CGFloat

@@ -1,7 +1,8 @@
 import SwiftUI
 
+@MainActor
 struct CameraRawCurveControls: View {
-    @Bindable var session: EditorSession
+    @ObservedObject var session: EditorSession
     private var raw: CameraRawSettings { session.filterEdit?.settings.cameraRaw ?? CameraRawSettings() }
     private var edit: FilterEdit? { session.filterEdit }
     /// What a drag in the graph is moving, picked when it starts and kept until it ends, as Image › Curves does: a
@@ -9,6 +10,7 @@ struct CameraRawCurveControls: View {
     private enum Drag { case point(Int), divider(Int), region(WritableKeyPath<CameraRawCurveSettings, Double>, Double) }
     @State private var drag: Drag?
     @State private var selected: Int?
+    @State private var lastPickedPoint: CGPoint?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -25,7 +27,7 @@ struct CameraRawCurveControls: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .help("RGB changes brightness. Red, green, and blue also shift the color.")
-                .onChange(of: edit?.cameraRawPointChannel) { _, _ in selected = nil; drag = nil }
+                .compatOnChange(of: edit?.cameraRawPointChannel) { _, _ in selected = nil; drag = nil }
             }
             curveGraph
                 .frame(height: 150)
@@ -92,14 +94,17 @@ struct CameraRawCurveControls: View {
             // nothing could be dragged, and picking the nearest point afresh at every step jumped between points.
             .gesture(DragGesture(minimumDistance: 0)
                 .onChanged { value in
+                    lastPickedPoint = value.startLocation
                     if drag == nil { drag = edit?.cameraRawCurvePage == .parametric ? parametricDrag(at: value.startLocation, in: size)
                                                                                      : pointDrag(at: value.startLocation, in: size) }
                     continueDrag(value, in: size)
                 }
                 .onEnded { _ in drag = nil })
-            .simultaneousGesture(SpatialTapGesture(count: 2).onEnded { value in
-                guard edit?.cameraRawCurvePage == .point else { return }
-                removePoint(at: value.location, in: size)
+            .simultaneousGesture(TapGesture(count: 2).onEnded {
+                // macOS 13's SpatialTapGesture supplied the point; this one can't, so a double-click removes the
+                // point nearest the last one picked, which is what the click was on.
+                guard edit?.cameraRawCurvePage == .point, let point = lastPickedPoint else { return }
+                removePoint(at: point, in: size)
             })
         }
         .background(Color.black.opacity(0.35))
@@ -259,8 +264,9 @@ private enum CurvePreset: Hashable {
     }
 }
 
+@MainActor
 struct CameraRawMixerControls: View {
-    @Bindable var session: EditorSession
+    @ObservedObject var session: EditorSession
     private var raw: CameraRawSettings { session.filterEdit?.settings.cameraRaw ?? CameraRawSettings() }
     private var edit: FilterEdit? { session.filterEdit }
     /// What a drag in the graph is moving, picked when it starts and kept until it ends, as Image › Curves does: a
@@ -423,8 +429,9 @@ struct CameraRawMixerControls: View {
     }
 }
 
+@MainActor
 struct CameraRawGradingControls: View {
-    @Bindable var session: EditorSession
+    @ObservedObject var session: EditorSession
     private var raw: CameraRawSettings { session.filterEdit?.settings.cameraRaw ?? CameraRawSettings() }
     private var page: CameraRawGradePage { session.filterEdit?.cameraRawGradePage ?? .threeWay }
 
@@ -499,6 +506,7 @@ struct CameraRawGradingControls: View {
     }
 }
 
+@MainActor
 private struct GradeWheel: View {
     var hue: Double
     var saturation: Double

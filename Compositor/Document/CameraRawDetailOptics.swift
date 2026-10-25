@@ -1,7 +1,7 @@
 import AppKit
 
 /// Sharpening and manual noise reduction. Amount is 0…150; the rest use Camera Raw's usual 0…100 ranges.
-nonisolated struct CameraRawDetailSettings: Equatable, Sendable {
+struct CameraRawDetailSettings: Equatable, Sendable {
     var sharpenAmount: Double = 0
     var sharpenRadius: Double = 10
     var sharpenDetail: Double = 25
@@ -40,7 +40,7 @@ nonisolated struct CameraRawDetailSettings: Equatable, Sendable {
 
 /// Lens profile toggles, manual distortion, defringe, and lens-vignetting correction. Profile metadata is not
 /// available on a rendered layer, so the profile sliders only scale generic correction strength.
-nonisolated struct CameraRawOpticsSettings: Equatable, Sendable {
+struct CameraRawOpticsSettings: Equatable, Sendable {
     var removeChromaticAberration = false
     var enableLensProfile = false
     var profileDistortion: Double = 100
@@ -95,7 +95,7 @@ nonisolated struct CameraRawOpticsSettings: Equatable, Sendable {
     }
 }
 
-nonisolated extension CameraRawSettings {
+extension CameraRawSettings {
     func applyDetailOptics(pixels: UnsafeMutablePointer<UInt8>, width: Int, height: Int, stride: Int, scale: Double,
                            profileStrength: Double, sharpenMask: Bool) {
         let detail = detail.normalized

@@ -1,6 +1,6 @@
 import AppKit
 
-nonisolated enum LiveMaskGraph {
+enum LiveMaskGraph {
     static func validate(_ layers: [ProjectLayerRecord]) throws {
         var records: [UUID: ProjectLayerRecord] = [:]
         for layer in layers {
@@ -71,7 +71,7 @@ extension EditorSession {
     }
 }
 
-nonisolated enum LiveMaskBaker {
+enum LiveMaskBaker {
     static func bake(_ snapshot: ProjectSnapshot, target: UUID) throws -> ImportedImage? {
         guard let record = snapshot.manifest.layers.first(where: { $0.id == target }), let original = snapshot.images[target] else { return nil }
         let w = original.image.width, h = original.image.height
@@ -116,7 +116,6 @@ extension EditorSession {
         guard response == .alertFirstButtonReturn, let snapshot = projectSnapshot() else { return true }
         isProjectBusy = true
         Task {
-            defer { isProjectBusy = false }
             do {
                 let baked = try await Task.detached(priority: .userInitiated) {
                     var result: [UUID: ImportedImage] = [:]
@@ -125,6 +124,8 @@ extension EditorSession {
                 }.value
                 finishDeletingLayers(ids, baked: baked)
             } catch { brushError = error.localizedDescription }
+            // `defer` can't touch main-actor state from this Task in Swift 5.7; both paths end here.
+            isProjectBusy = false
         }
         return true
     }

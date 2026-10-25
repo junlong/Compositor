@@ -9,7 +9,7 @@ import Foundation
 ///
 /// Photoshop works a picture under about 1020 pixels on its long side differently, lifting much less, so there are two
 /// sets of coefficients. Which one applies goes by the layer's own size, so a preview drawn smaller matches the result.
-nonisolated enum CameraRawShadows {
+enum CameraRawShadows {
     struct Tables {
         /// The long side, in pixels, from which a picture takes the second set.
         let normalFrom: Double
@@ -55,7 +55,13 @@ nonisolated enum CameraRawShadows {
         let (low, lower) = points[index], (high, upper) = points[index + 1]
         let t = Float((value - low) / (high - low))
         let count = tables.coefficients[set][0].count
-        return (0..<count).map { i in (lower?[i] ?? 0) * (1 - t) + (upper?[i] ?? 0) * t }
+        var values = [Float](repeating: 0, count: count)
+        for index in 0..<count {
+            let from = lower?[index] ?? 0
+            let to = upper?[index] ?? 0
+            values[index] = from * (1 - t) + to * t
+        }
+        return values
     }
 
     /// Runs Shadows at `amount` over 8-bit premultiplied RGBA. `scale` is pixels here per layer pixel, so a preview

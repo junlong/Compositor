@@ -1,7 +1,8 @@
 import SwiftUI
 
+@MainActor
 struct LayersPanel: View {
-    @Bindable var session: EditorSession
+    @ObservedObject var session: EditorSession
     /// Dragging the panel's left edge sets it, within `widths`.
     var width: CGFloat = 252
     /// No narrower than the footer: its icons can't shrink, and a footer wider than the panel pushed everything in
@@ -78,6 +79,7 @@ struct LayersPanel: View {
 }
 
 /// The panel's empty states: a light icon over a title, with a line or two of detail beneath.
+@MainActor
 private struct LayersUnavailableView<Content: View>: View {
     let title: LocalizedStringKey
     let systemImage: String
@@ -104,6 +106,7 @@ private struct LayersUnavailableView<Content: View>: View {
 /// A footer button's icon: full strength when the button can be used, and as dim as the footer's menus (Effects,
 /// Adjustments) when it can't. A plain button with its own color doesn't dim when disabled, so the footer looked
 /// uneven, some disabled icons barely fading and others nearly gone.
+@MainActor
 struct FooterIcon: View {
     let systemName: String
     @Environment(\.isEnabled) private var isEnabled
@@ -116,6 +119,7 @@ struct FooterIcon: View {
     }
 }
 
+@MainActor
 extension View {
     /// Makes a small footer icon easier to click. The padding is the clickable area, so the
     /// footer's own spacing is reduced to match and every icon keeps its old position.

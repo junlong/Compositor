@@ -1,8 +1,10 @@
 import AppKit
 import Sparkle
 
+
+@MainActor
 final class CompositorApplicationDelegate: NSObject, NSApplicationDelegate {
-    let workspace = ProjectWorkspace()
+    let workspace = ProjectWorkspace.shared
     var session: EditorSession { workspace.current.session }
     var projects: ProjectController { workspace.current.controller }
     var showEditor: (() -> Void)?
@@ -33,7 +35,7 @@ final class CompositorApplicationDelegate: NSObject, NSApplicationDelegate {
             // appears. A Dock click's reopen event makes the window, so the app sends itself one once launched.
             else { DispatchQueue.main.async { Self.reopen() } }
         }
-        application.activate()
+        application.activate(ignoringOtherApps: true)
         Task { await workspace.receive(urls) }
     }
 
@@ -61,6 +63,9 @@ final class CompositorApplicationDelegate: NSObject, NSApplicationDelegate {
         // beside Canvas Only (F), which does the same job without the slow slide into a new space. Taken out once the menus exist, and again whenever the
         // menu bar is opened, in case SwiftUI has rebuilt them since.
         DispatchQueue.main.async { Self.removeSystemExtras() }
+        // The first launch fills the screen without going full screen; after that the window reopens at the size it
+        // was left. macOS 26's defaultWindowPlacement did this for the original; here the window is sized directly.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in self?.sizeWindowOnFirstLaunch() }
         // View › Canvas Only's key is a plain F, and the menu takes a plain letter even while something is being
         // typed. So an F meant for a text field (the palette's search, a layer's name, a number) goes straight to it,
         // before the menu sees it.
@@ -98,6 +103,15 @@ final class CompositorApplicationDelegate: NSObject, NSApplicationDelegate {
             if UserDefaults.standard.string(forKey: "UpdateFeedURL") != nil { self?.updater.checkForUpdates() }
             #endif
         }
+    }
+
+    private func sizeWindowOnFirstLaunch() {
+        let key = "HasPositionedEditorWindow"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        guard let window = NSApp.windows.first(where: { $0.canBecomeMain && !($0 is NSPanel) }),
+              let screen = window.screen ?? NSScreen.main else { return }
+        UserDefaults.standard.set(true, forKey: key)
+        window.setFrame(screen.visibleFrame, display: true)
     }
 
     /// Black over everything but the window's inside in Canvas Only: the screen around it, its rounded corners and the
@@ -166,7 +180,7 @@ final class CompositorApplicationDelegate: NSObject, NSApplicationDelegate {
 
     /// Takes macOS's extras (text-typing items and Enter Full Screen) out of the menu bar's menus, found by what they do rather than their titles, so
     /// it holds in any language, then tidies the separators they leave behind.
-    @MainActor static func removeSystemExtras() {
+    static func removeSystemExtras() {
         for top in NSApp.mainMenu?.items ?? [] {
             guard let menu = top.submenu else { continue }
             let extras = menu.items.filter(isSystemExtra)

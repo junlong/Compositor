@@ -7,7 +7,7 @@ import Foundation
 ///
 /// A package is replaced atomically by renaming a sibling over it, which retires the file descriptors being watched;
 /// every event therefore re-arms the watch by path, so the new package is watched after the swap.
-@MainActor
+
 final class ProjectWatcher {
     let url: URL
     private let onChange: @MainActor () -> Void
@@ -15,7 +15,7 @@ final class ProjectWatcher {
     private var delivery: Task<Void, Never>?
     private var rearm: Task<Void, Never>?
     /// How long to wait after the last event before reporting, so a save that touches several files reports once.
-    static let coalescing: Duration = .milliseconds(300)
+    static let coalescing: UInt64 = 300_000_000
 
     init(url: URL, onChange: @escaping @MainActor () -> Void) {
         self.url = url
@@ -52,7 +52,7 @@ final class ProjectWatcher {
     }
 
     /// The dispatch sources, kept outside the actor so `deinit` can cancel them from any context.
-    private nonisolated final class SourceBox: @unchecked Sendable {
+    private final class SourceBox: @unchecked Sendable {
         private let lock = NSLock()
         private var list: [DispatchSourceFileSystemObject] = []
         var count: Int { lock.withLock { list.count } }
@@ -69,7 +69,7 @@ final class ProjectWatcher {
         rearm?.cancel()
         rearm = Task { @MainActor [weak self] in
             for _ in 0..<20 {
-                try? await Task.sleep(for: .milliseconds(100))
+                try? await Task.sleep(nanoseconds: UInt64(100) * 1_000_000)
                 guard let self, !Task.isCancelled else { return }
                 self.arm()
                 if self.sources.count == self.watchedPaths.count { return }
@@ -77,7 +77,7 @@ final class ProjectWatcher {
         }
         delivery?.cancel()
         delivery = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: Self.coalescing)
+            try? await Task.sleep(nanoseconds: Self.coalescing)
             guard let self, !Task.isCancelled else { return }
             self.onChange()
         }

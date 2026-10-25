@@ -7,6 +7,7 @@ enum ToolHeaderStyle {
     static let controlFont = Font.system(size: 12)
 }
 
+@MainActor
 extension View {
     /// Keeps a unit ("%", "px") tight against its field so the two read as one value,
     /// regardless of the wider spacing between controls in a bar.

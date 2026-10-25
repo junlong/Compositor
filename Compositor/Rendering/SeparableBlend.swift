@@ -7,7 +7,7 @@ import CoreImage
 /// the source is, so a soft brush comes out with a hard edge. And it has no equivalent at all for Linear Burn,
 /// Linear Dodge, Vivid Light, Linear Light, Pin Light, Hard Mix, Subtract or Divide. Either way the layer is drawn
 /// into a copy of the canvas, blended there, and the result put back.
-nonisolated enum SeparableBlend {
+enum SeparableBlend {
     /// Whether this mode has to be composited through a surface rather than drawn straight on.
     static func needsSurface(_ mode: LayerBlendMode) -> Bool { mode.coreImageFilter != nil }
     private static let space = CGColorSpace(name: CGColorSpace.sRGB)!

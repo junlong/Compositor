@@ -1,7 +1,7 @@
 import AppKit
 
 /// Carries a CGImage out of a detached task.
-nonisolated private struct Box: @unchecked Sendable {
+private struct Box: @unchecked Sendable {
     let image: CGImage
     init(_ image: CGImage) { self.image = image }
 }
@@ -42,7 +42,7 @@ final class PixelMove {
 }
 
 extension EditorSession {
-    nonisolated enum FillSource: Sendable { case foreground, background }
+    enum FillSource: Sendable { case foreground, background }
 
     /// Whether the active layer (or its mask) can take a fill or clear right now.
     var canEditPixels: Bool { canPaint }

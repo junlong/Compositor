@@ -8,7 +8,7 @@ import Foundation
 /// Assets are not read: every save and open takes a fresh digest, and hashing every image of a large project would
 /// hold each save for seconds. Anything that edits a project rewrites its manifest, and a PNG whose pixels change
 /// all but always changes size, so names and sizes catch the rest from the file system alone.
-nonisolated struct ProjectDigest: Equatable, Sendable {
+struct ProjectDigest: Equatable, Sendable {
     let value: Data
 
     /// Reads the package outside file coordination on purpose: it is called after a change was already seen and

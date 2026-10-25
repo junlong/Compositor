@@ -119,7 +119,7 @@ extension EditorSession {
     }
 }
 
-nonisolated enum FloatingMerge {
+enum FloatingMerge {
     /// Draws the floating pixels (with their transform) onto the source layer's own pixel
     /// grid, growing the layer where they now extend past it. A mask grows with it, revealing
     /// the new area.

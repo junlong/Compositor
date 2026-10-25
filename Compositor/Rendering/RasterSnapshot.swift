@@ -3,7 +3,7 @@ import AppKit
 /// Immutable sparse raster. Paint commits share untouched tiles with their source.
 /// A contiguous CGImage backing is materialized only when a consumer (export or an
 /// image-processing operation) actually requests its bytes, never on mouse-up.
-nonisolated final class RasterSnapshot: @unchecked Sendable {
+final class RasterSnapshot: @unchecked Sendable {
     let width: Int
     let height: Int
     let base: CGImage?

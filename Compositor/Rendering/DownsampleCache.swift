@@ -10,7 +10,7 @@ import Foundation
 ///
 /// Every halving is exactly 2×, so level `k` pixel `i` always covers source pixels `i·2^k ..< (i+1)·2^k`: a
 /// piece of an image reduced on its own lines up with the whole image reduced (see `TiledLayerRenderer`).
-nonisolated final class DownsampleCache: @unchecked Sendable {
+final class DownsampleCache: @unchecked Sendable {
     static let shared = DownsampleCache()
     /// Pixels of halved copies kept at once (about 400 MB of RGBA).
     static let pixelBudget = DocumentLimits.maxSurfacePixels

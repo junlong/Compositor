@@ -15,7 +15,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "8F311F98304F03BB0017D14F"
+               BlueprintIdentifier = "E3435DDA2687639586BF0B70"
                BuildableName = "Compositor.app"
                BlueprintName = "Compositor"
                ReferencedContainer = "container:Compositor.xcodeproj">
@@ -29,7 +29,7 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "8F311FA5304F03BC0017D14F"
+               BlueprintIdentifier = "A700229C3AC2DAE057FE5B27"
                BuildableName = "CompositorTests.xctest"
                BlueprintName = "CompositorTests"
                ReferencedContainer = "container:Compositor.xcodeproj">
@@ -46,7 +46,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "8F311F98304F03BB0017D14F"
+            BlueprintIdentifier = "E3435DDA2687639586BF0B70"
             BuildableName = "Compositor.app"
             BlueprintName = "Compositor"
             ReferencedContainer = "container:Compositor.xcodeproj">
@@ -58,7 +58,7 @@
             parallelizable = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "8F311FA5304F03BC0017D14F"
+               BlueprintIdentifier = "A700229C3AC2DAE057FE5B27"
                BuildableName = "CompositorTests.xctest"
                BlueprintName = "CompositorTests"
                ReferencedContainer = "container:Compositor.xcodeproj">
@@ -80,7 +80,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "8F311F98304F03BB0017D14F"
+            BlueprintIdentifier = "E3435DDA2687639586BF0B70"
             BuildableName = "Compositor.app"
             BlueprintName = "Compositor"
             ReferencedContainer = "container:Compositor.xcodeproj">
@@ -97,7 +97,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "8F311F98304F03BB0017D14F"
+            BlueprintIdentifier = "E3435DDA2687639586BF0B70"
             BuildableName = "Compositor.app"
             BlueprintName = "Compositor"
             ReferencedContainer = "container:Compositor.xcodeproj">

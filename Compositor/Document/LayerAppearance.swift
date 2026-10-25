@@ -1,7 +1,7 @@
 import Foundation
 import CoreGraphics
 
-nonisolated enum LayerBlendMode: String, Codable, CaseIterable, Sendable {
+enum LayerBlendMode: String, Codable, CaseIterable, Sendable {
     case normal = "Normal"
     case darken = "Darken", multiply = "Multiply", colorBurn = "Color Burn"
     case linearBurn = "Linear Burn"
@@ -27,24 +27,24 @@ nonisolated enum LayerBlendMode: String, Codable, CaseIterable, Sendable {
     /// so this is only meaningful for the modes `SeparableBlend.needsSurface` leaves alone.
     var cgMode: CGBlendMode {
         switch self {
-        case .normal: .normal
-        case .multiply: .multiply
-        case .screen: .screen
-        case .overlay: .overlay
-        case .softLight: .softLight
-        case .hardLight: .hardLight
-        case .darken: .darken
-        case .lighten: .lighten
-        case .difference: .difference
-        case .exclusion: .exclusion
-        case .colorDodge: .colorDodge
-        case .colorBurn: .colorBurn
-        case .hue: .hue
-        case .saturation: .saturation
-        case .color: .color
-        case .luminosity: .luminosity
+        case .normal: return .normal
+        case .multiply: return .multiply
+        case .screen: return .screen
+        case .overlay: return .overlay
+        case .softLight: return .softLight
+        case .hardLight: return .hardLight
+        case .darken: return .darken
+        case .lighten: return .lighten
+        case .difference: return .difference
+        case .exclusion: return .exclusion
+        case .colorDodge: return .colorDodge
+        case .colorBurn: return .colorBurn
+        case .hue: return .hue
+        case .saturation: return .saturation
+        case .color: return .color
+        case .luminosity: return .luminosity
         // Drawn through Core Image or by hand; never reaches Core Graphics.
-        case .linearBurn, .linearDodge, .vividLight, .linearLight, .pinLight, .hardMix, .subtract, .divide: .normal
+        case .linearBurn, .linearDodge, .vividLight, .linearLight, .pinLight, .hardMix, .subtract, .divide: return .normal
         }
     }
 
@@ -53,18 +53,18 @@ nonisolated enum LayerBlendMode: String, Codable, CaseIterable, Sendable {
     /// 25 levels off Photoshop's with a light blend color (Core Image's is within 5).
     var coreImageFilter: String? {
         switch self {
-        case .colorBurn: "CIColorBurnBlendMode"
-        case .colorDodge: "CIColorDodgeBlendMode"
-        case .softLight: "CISoftLightBlendMode"
-        case .linearBurn: "CILinearBurnBlendMode"
-        case .linearDodge: "CILinearDodgeBlendMode"
-        case .vividLight: "CIVividLightBlendMode"
-        case .linearLight: "CILinearLightBlendMode"
-        case .pinLight: "CIPinLightBlendMode"
-        case .hardMix: "CIHardMixBlendMode"
-        case .subtract: "CISubtractBlendMode"
-        case .divide: "CIDivideBlendMode"
-        default: nil
+        case .colorBurn: return "CIColorBurnBlendMode"
+        case .colorDodge: return "CIColorDodgeBlendMode"
+        case .softLight: return "CISoftLightBlendMode"
+        case .linearBurn: return "CILinearBurnBlendMode"
+        case .linearDodge: return "CILinearDodgeBlendMode"
+        case .vividLight: return "CIVividLightBlendMode"
+        case .linearLight: return "CILinearLightBlendMode"
+        case .pinLight: return "CIPinLightBlendMode"
+        case .hardMix: return "CIHardMixBlendMode"
+        case .subtract: return "CISubtractBlendMode"
+        case .divide: return "CIDivideBlendMode"
+        default: return nil
         }
     }
 

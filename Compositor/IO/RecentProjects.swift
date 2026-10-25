@@ -1,14 +1,15 @@
 import AppKit
-import Observation
+import Combine
 
 /// File > Open Recent. macOS keeps the list (the same one the Dock icon's menu shows); this mirrors it so the
 /// menu updates as projects are opened and saved. Projects since moved or deleted are left out, checked again each
 /// time you come back to the app (from Finder, say).
-@MainActor @Observable
-final class RecentProjects {
+
+@MainActor
+final class RecentProjects: ObservableObject {
     static let shared = RecentProjects()
-    private(set) var urls: [URL] = []
-    @ObservationIgnored private var activation: NSObjectProtocol?
+    @Published private(set) var urls: [URL] = []
+    private var activation: NSObjectProtocol?
     private init() {
         refresh()
         activation = NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in

@@ -5,16 +5,16 @@ import Foundation
 /// Game textures pack four grayscale maps into one image's red, green, blue and alpha (metallic, ambient occlusion,
 /// detail and smoothness, say). Export As › Channel Pack writes one from layers, keeping a pixel's color where its
 /// alpha is 0, which an ordinary image throws away (it stores color multiplied by alpha) but a packed texture needs.
-nonisolated enum ChannelPack {
+enum ChannelPack {
     enum Channel: String, CaseIterable, Sendable {
         case red = "Red", green = "Green", blue = "Blue", alpha = "Alpha"
         /// Layer names that pick a layer for this channel without being asked.
         var names: Set<String> {
             switch self {
-            case .red: ["r", "red"]
-            case .green: ["g", "green"]
-            case .blue: ["b", "blue"]
-            case .alpha: ["a", "alpha"]
+            case .red: return ["r", "red"]
+            case .green: return ["g", "green"]
+            case .blue: return ["b", "blue"]
+            case .alpha: return ["a", "alpha"]
             }
         }
     }

@@ -1,6 +1,6 @@
 import AppKit
 
-nonisolated enum ContentFill {
+enum ContentFill {
     enum Failure: LocalizedError {
         case noSource
         var errorDescription: String? { "Not enough unselected, opaque image pixels to synthesize a fill. Use a smaller selection with some surrounding image." }

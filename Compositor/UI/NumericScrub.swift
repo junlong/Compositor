@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 
 /// Makes a label or unit a drag target for the value shown in its adjacent field.
+@MainActor
 private struct NumericScrub<Value: BinaryFloatingPoint>: ViewModifier {
     @Binding var value: Value
     let sensitivity: Value
@@ -16,15 +17,11 @@ private struct NumericScrub<Value: BinaryFloatingPoint>: ViewModifier {
     func body(content: Content) -> some View {
         content
             .contentShape(Rectangle())
-            .onContinuousHover { phase in
-                switch phase {
-                case .active(_):
-                    isHovering = true
-                    NSCursor.resizeLeftRight.set()
-                case .ended:
-                    isHovering = false
-                    if startValue == nil { NSCursor.arrow.set() }
-                }
+            // macOS 13's onContinuousHover reports a point; scrubbing only needs enter and leave.
+            .onHover { hovering in
+                isHovering = hovering
+                if hovering { NSCursor.resizeLeftRight.set() }
+                else if startValue == nil { NSCursor.arrow.set() }
             }
             .simultaneousGesture(DragGesture(minimumDistance: 1)
                 .onChanged { drag in
@@ -43,6 +40,7 @@ private struct NumericScrub<Value: BinaryFloatingPoint>: ViewModifier {
     }
 }
 
+@MainActor
 extension View {
     func scrubbable<Value: BinaryFloatingPoint>(sensitivity: Value, value: Binding<Value>,
                                                 range: ClosedRange<Value>, step: Value? = nil,

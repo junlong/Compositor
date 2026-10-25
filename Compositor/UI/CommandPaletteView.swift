@@ -2,8 +2,9 @@ import AppKit
 import SwiftUI
 
 /// The palette: a search field over the ranked commands. ↑/↓ choose, Return runs, Esc closes.
+@MainActor
 struct CommandPaletteView: View {
-    @Bindable var model: CommandPaletteModel
+    @ObservedObject var model: CommandPaletteModel
     let run: (CommandPaletteEntry) -> Void
     let close: () -> Void
     @FocusState private var searching: Bool
@@ -14,8 +15,8 @@ struct CommandPaletteView: View {
                 .textFieldStyle(.plain).font(.system(size: 17))
                 .padding(.horizontal, 16).padding(.vertical, 13)
                 .focused($searching)
-                .onKeyPress(.upArrow) { model.move(by: -1); return .handled }
-                .onKeyPress(.downArrow) { model.move(by: 1); return .handled }
+                // Up and Down are caught by the controller's key monitor: the text field would take them for
+                // its insertion point first.
                 .onSubmit { if let entry = model.selected { run(entry) } }
                 .onExitCommand(perform: close)
             Divider()
@@ -35,7 +36,7 @@ struct CommandPaletteView: View {
                 .overlay {
                     if model.results.isEmpty { Text("No commands match").foregroundStyle(.secondary) }
                 }
-                .onChange(of: model.selection) { _, _ in
+                .compatOnChange(of: model.selection) { _, _ in
                     if let id = model.selected?.id { scroller.scrollTo(id) }
                 }
             }
@@ -68,6 +69,7 @@ struct CommandPaletteView: View {
 
 /// Shows the palette over the editor window and runs what's chosen. It closes when it loses focus, so a click in
 /// the editor puts it away.
+
 @MainActor
 final class CommandPaletteController {
     static let shared = CommandPaletteController()
@@ -76,6 +78,8 @@ final class CommandPaletteController {
 
     private(set) var panel: PalettePanel?
     private weak var window: NSWindow?
+    private var model: CommandPaletteModel?
+    private var keyMonitor: Any?
     var isOpen: Bool { panel?.isVisible == true }
 
     /// F on the canvas: opens the palette over `window`, or closes it when it's already open. `menu` is the menu bar to list,
@@ -87,11 +91,11 @@ final class CommandPaletteController {
         let entries = (bar.map { CommandPaletteMenu.entries(in: $0, skipping: Self.skipped) } ?? []) + CommandPaletteEntry.layerCommands(for: session)
             + CommandPaletteEntry.tools(for: session)
         let model = CommandPaletteModel(entries: entries)
+        self.model = model
         let panel = self.panel ?? makePanel()
         let host = NSHostingView(rootView: CommandPaletteView(model: model, run: { [weak self] in self?.run($0) },
                                                              close: { [weak self] in self?.close() }))
         // The panel keeps the size given below rather than growing to what SwiftUI would like.
-        host.sizingOptions = []
         host.frame = NSRect(x: 0, y: 0, width: 460, height: 290)
         panel.contentView = host
         panel.setContentSize(NSSize(width: 460, height: 290))
@@ -101,10 +105,32 @@ final class CommandPaletteController {
             panel.center()
         }
         panel.makeKeyAndOrderFront(nil)
+        installKeyMonitor()
     }
 
     func close() {
+        removeKeyMonitor()
         panel?.orderOut(nil)
+        model = nil
+    }
+
+    /// Up and Down move the choice while the palette has the keyboard. A local monitor sees the keys before the
+    /// search field's insertion point does, which is what macOS 14's onKeyPress did at the view level.
+    private func installKeyMonitor() {
+        removeKeyMonitor()
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, self.panel?.isVisible == true, NSApp.keyWindow === self.panel else { return event }
+            switch event.keyCode {
+            case 126: self.model?.move(by: -1); return nil
+            case 125: self.model?.move(by: 1); return nil
+            default: return event
+            }
+        }
+    }
+
+    private func removeKeyMonitor() {
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        keyMonitor = nil
     }
 
     /// Closes the palette, gives the editor back its focus, then runs the entry once the main actor is next free,

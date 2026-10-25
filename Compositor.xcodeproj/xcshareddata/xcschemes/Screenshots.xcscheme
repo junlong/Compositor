@@ -15,7 +15,7 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "8F311F98304F03BB0017D14F"
+               BlueprintIdentifier = "E3435DDA2687639586BF0B70"
                BuildableName = "Compositor.app"
                BlueprintName = "Compositor"
                ReferencedContainer = "container:Compositor.xcodeproj">
@@ -29,7 +29,7 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "8F311FAF304F03BC0017D14F"
+               BlueprintIdentifier = "678B4DE61235C519CC844609"
                BuildableName = "CompositorUITests.xctest"
                BlueprintName = "CompositorUITests"
                ReferencedContainer = "container:Compositor.xcodeproj">
@@ -46,7 +46,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "8F311F98304F03BB0017D14F"
+            BlueprintIdentifier = "E3435DDA2687639586BF0B70"
             BuildableName = "Compositor.app"
             BlueprintName = "Compositor"
             ReferencedContainer = "container:Compositor.xcodeproj">
@@ -57,7 +57,7 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "8F311FAF304F03BC0017D14F"
+               BlueprintIdentifier = "678B4DE61235C519CC844609"
                BuildableName = "CompositorUITests.xctest"
                BlueprintName = "CompositorUITests"
                ReferencedContainer = "container:Compositor.xcodeproj">
@@ -84,7 +84,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "8F311F98304F03BB0017D14F"
+            BlueprintIdentifier = "E3435DDA2687639586BF0B70"
             BuildableName = "Compositor.app"
             BlueprintName = "Compositor"
             ReferencedContainer = "container:Compositor.xcodeproj">

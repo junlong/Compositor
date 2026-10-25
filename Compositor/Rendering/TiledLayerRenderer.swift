@@ -11,8 +11,8 @@ import Foundation
 /// halvings as the image, and drawn only inside the square. The margin covers everything the halvings and Core
 /// Graphics's last resample can reach, so a piece's pixels match the whole image's; the unchanged image fills
 /// the rest. Clips are hard-edged so the parts meet without gaps or overlap.
-nonisolated enum TiledLayerRenderer {
-    nonisolated struct Piece: @unchecked Sendable {
+enum TiledLayerRenderer {
+    struct Piece: @unchecked Sendable {
         /// Grid pixels this piece draws.
         let interior: CGRect
         /// Grid pixels its image holds: the interior and a margin.
@@ -370,7 +370,7 @@ nonisolated enum TiledLayerRenderer {
 
 /// Committed rasters' pieces, built once per snapshot and level (snapshots never change); the least recently
 /// used are dropped beyond a pixel budget.
-nonisolated final class TiledPieceCache: @unchecked Sendable {
+final class TiledPieceCache: @unchecked Sendable {
     static let shared = TiledPieceCache()
     static let pixelBudget = 150_000_000
     private struct Key: Hashable {

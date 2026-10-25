@@ -4,7 +4,7 @@ import AppKit
 /// face, scrolling on their own. A menu can't keep one item still while the rest scroll, so this is a panel that opens
 /// below the font control. Highlighting a face (pointer or arrow keys) previews it on the text; a click or Return
 /// chooses it, and Escape or a click elsewhere puts the text back.
-@MainActor
+
 final class FontListPanel: NSPanel, NSTableViewDataSource, NSTableViewDelegate, NSTextFieldDelegate {
     var onHighlight: ((String) -> Void)?
     /// Faces a search brought in from a family macOS leaves out of its list, so they stay listed next time.

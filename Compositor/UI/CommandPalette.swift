@@ -101,6 +101,7 @@ enum CommandPaletteSearch {
 /// The menu bar as palette entries: every item that does something, with its path ("Layer › Rename Layer…"), its
 /// key and whether it's enabled now. Read afresh each time the palette opens, so titles that change with state
 /// ("Undo Brush Stroke") are current.
+@MainActor
 enum CommandPaletteMenu {
     /// `skipping` holds titles left out: top-level menus (Window, Help) and single items (the palette's own).
     /// The app menu, the first in the bar, is always left out.
@@ -168,6 +169,7 @@ enum CommandPaletteMenu {
     }
 }
 
+@MainActor
 extension CommandPaletteEntry {
     /// The tools, run by choosing them. With no document open there is nothing to use them on, so they're disabled.
     /// Commands that live on buttons rather than in the menu bar, so the palette finds them too: adding a layer mask,
@@ -228,13 +230,14 @@ extension CommandPaletteEntry {
 }
 
 /// What the palette shows: the query, the ranked results and which one is chosen.
-@MainActor @Observable
-final class CommandPaletteModel {
+
+@MainActor
+final class CommandPaletteModel: ObservableObject {
     let entries: [CommandPaletteEntry]
     // Only a real change goes back to the top: pressing Return writes the same text back, which used to move the
     // choice to the first row just before it ran.
-    var query = "" { didSet { if query != oldValue { selection = 0 } } }
-    var selection = 0
+    @Published var query = "" { didSet { if query != oldValue { selection = 0 } } }
+    @Published var selection = 0
 
     init(entries: [CommandPaletteEntry]) { self.entries = entries }
 

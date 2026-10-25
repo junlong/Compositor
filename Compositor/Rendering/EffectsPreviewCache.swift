@@ -2,9 +2,9 @@ import AppKit
 
 /// Canvas-only previews. Full-resolution export continues to use LayerEffectsRenderer.render on its worker.
 /// A single worker, superseded-request cancellation and a fixed pixel budget keep slider drags off the UI thread.
-@MainActor
+
 final class EffectsPreviewCache {
-    nonisolated private final class Request: @unchecked Sendable {
+    private final class Request: @unchecked Sendable {
         let id = UUID()
         let image: CGImage
         let mask: CGImage?
@@ -32,7 +32,7 @@ final class EffectsPreviewCache {
                 && effects == other.effects && sideLimit == other.sideLimit
         }
     }
-    nonisolated private struct Result: @unchecked Sendable {
+    private struct Result: @unchecked Sendable {
         let image: CGImage
         let inset: CGFloat
         /// Set only on a seeded result: where that image belongs on the document, which an inset can't express
@@ -43,7 +43,7 @@ final class EffectsPreviewCache {
         let request: Request
         var result: Result?
     }
-    nonisolated private static let worker = DispatchQueue(label: "com.compositor.effects-preview", qos: .userInitiated)
+    private static let worker = DispatchQueue(label: "com.compositor.effects-preview", qos: .userInitiated)
     private var entries: [UUID: Entry] = [:]
     /// A few recent finished previews per layer, newest last. Undo and redo put a layer's earlier pixels back, and
     /// the effects for them are taken from here instead of blinking off while they're rendered again.
@@ -135,7 +135,7 @@ final class EffectsPreviewCache {
         return (try? Self.render(request)).map { ($0.image, $0.inset) }
     }
 
-    nonisolated private static func render(_ request: Request) throws -> Result {
+    private static func render(_ request: Request) throws -> Result {
         let image = request.image
         let margin = LayerEffectsRenderer.margin(for: request.effects)
         // Include stroke/shadow margins in the budget; even a 500px stroke stays bounded.

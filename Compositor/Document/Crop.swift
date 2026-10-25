@@ -1,7 +1,7 @@
 import Foundation
 import CoreGraphics
 
-nonisolated enum CropGeometry {
+enum CropGeometry {
     static func snapped(_ rect: CGRect) -> CGRect {
         let rect = rect.standardized
         let x = rect.minX.rounded(), y = rect.minY.rounded()
@@ -46,7 +46,7 @@ struct CropDrag {
 }
 
 /// Crop edges snap to nearby layer and canvas edges while dragging.
-nonisolated struct CropSnap {
+struct CropSnap {
     /// Document x and y positions to snap to.
     let xs: [CGFloat]
     let ys: [CGFloat]

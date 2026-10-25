@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-nonisolated enum LayerSampling: String, CaseIterable, Codable, Sendable {
+enum LayerSampling: String, CaseIterable, Codable, Sendable {
     case nearest = "Nearest"
     case smooth = "Smooth"
     case high = "High quality"
@@ -15,7 +15,7 @@ nonisolated enum LayerSampling: String, CaseIterable, Codable, Sendable {
 }
 
 /// Unrotated bounds in document pixels; rotation is clockwise around their center.
-nonisolated struct LayerTransform: Equatable, Codable, Sendable {
+struct LayerTransform: Equatable, Codable, Sendable {
     var origin: CGPoint
     var size: CGSize
     var rotation: CGFloat = 0
@@ -216,7 +216,7 @@ struct TransformDrag {
 
 /// Moving a layer snaps its edges and center to the canvas and to the other layers. The pull is a fixed distance
 /// on screen, so it feels the same at any zoom, and small enough to slide past without a fight.
-nonisolated enum TransformSnap {
+enum TransformSnap {
     /// How close, in screen points, a guide comes before it snaps.
     static let distance: CGFloat = 10
 

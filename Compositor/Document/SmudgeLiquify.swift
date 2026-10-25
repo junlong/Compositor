@@ -2,12 +2,12 @@ import AppKit
 
 /// The Blur tool's modes. Smudge and Liquify push the active layer's pixels around under the brush.
 /// The Brush tool's modes.
-nonisolated enum BrushToolMode: String, CaseIterable, Sendable {
+enum BrushToolMode: String, CaseIterable, Sendable {
     case paint = "Paint"
     case erase = "Erase"
 }
 
-nonisolated enum BlurToolMode: String, CaseIterable, Sendable {
+enum BlurToolMode: String, CaseIterable, Sendable {
     case liquify = "Liquify"
     case blur = "Blur"
     case smudge = "Smudge"

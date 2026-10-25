@@ -1,96 +1,102 @@
 import SwiftUI
 
+@MainActor
 struct ShapeControls: View {
-    @Bindable var session: EditorSession
+    @ObservedObject var session: EditorSession
 
     var body: some View {
         HStack(spacing: 12) {
-            Text("Shape").font(ToolHeaderStyle.titleFont)
-            Picker("Shape", selection: Binding(get: { session.shapeKind }, set: { kind in
-                session.cancelShape()
-                session.shapeKind = kind
-            })) {
-                ForEach(ShapeKind.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented).labelsHidden().fixedSize()
-            .help("Shift-U (or Tab) steps through Rectangle, Ellipse and Line")
-            Button { session.openColorPicker(background: false) } label: {
-                let swatch = RoundedRectangle(cornerRadius: 3, style: .continuous)
-                swatch.fill(Color(nsColor: session.foregroundColor.nsColor))
-                    .overlay { swatch.strokeBorder(.black.opacity(0.5), lineWidth: 1) }
-                    .frame(width: 36, height: 18)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Fill color")
-            .help("Shapes fill with the foreground color; click to change it")
-            if session.shapeKind == .line {
-                HStack(spacing: 6) {
-                    Text("Width").scrubbable(sensitivity: 1, value: $session.shapeLineWidth, range: 1...5000)
-                    // The slider covers everyday widths; typing or scrubbing reaches up to 5000.
-                    Slider(value: Binding(get: { min(50, session.shapeLineWidth) },
-                                          set: { session.shapeLineWidth = $0.rounded() }), in: 1...50)
-                        .frame(width: 100)
-                    TextField("Width", value: Binding(get: { session.shapeLineWidth },
-                                                      set: { session.shapeLineWidth = $0.isFinite ? min(5000, max(1, $0)) : 4 }),
-                              format: .number.precision(.fractionLength(0)))
-                        .frame(width: 48).textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing)
-                        .arrowSteps(value: { session.shapeLineWidth },
-                                    change: { session.shapeLineWidth = min(5000, max(1, $0)) })
-                        .unitSuffix("px")
+            Group {
+
+                Text("Shape").font(ToolHeaderStyle.titleFont)
+                Picker("Shape", selection: Binding(get: { session.shapeKind }, set: { kind in
+                    session.cancelShape()
+                    session.shapeKind = kind
+                })) {
+                    ForEach(ShapeKind.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }
-                HStack(spacing: 6) {
-                    Text("Style")
-                    Picker("Style", selection: $session.shapeLineStyle) {
-                        ForEach(ShapeLineStyle.allCases, id: \.self) { style in
-                            Image(nsImage: LineSample.style(style)).accessibilityLabel(style.rawValue).tag(style)
-                        }
+                .pickerStyle(.segmented).labelsHidden().fixedSize()
+                .help("Shift-U (or Tab) steps through Rectangle, Ellipse and Line")
+                Button { session.openColorPicker(background: false) } label: {
+                    let swatch = RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    swatch.fill(Color(nsColor: session.foregroundColor.nsColor))
+                        .overlay { swatch.strokeBorder(.black.opacity(0.5), lineWidth: 1) }
+                        .frame(width: 36, height: 18)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Fill color")
+                .help("Shapes fill with the foreground color; click to change it")
+            }
+            Group {
+                if session.shapeKind == .line {
+                    HStack(spacing: 6) {
+                        Text("Width").scrubbable(sensitivity: 1, value: $session.shapeLineWidth, range: 1...5000)
+                        // The slider covers everyday widths; typing or scrubbing reaches up to 5000.
+                        Slider(value: Binding(get: { min(50, session.shapeLineWidth) },
+                                              set: { session.shapeLineWidth = $0.rounded() }), in: 1...50)
+                            .frame(width: 100)
+                        TextField("Width", value: Binding(get: { session.shapeLineWidth },
+                                                          set: { session.shapeLineWidth = $0.isFinite ? min(5000, max(1, $0)) : 4 }),
+                                  format: .number.precision(.fractionLength(0)))
+                            .frame(width: 48).textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing)
+                            .arrowSteps(value: { session.shapeLineWidth },
+                                        change: { session.shapeLineWidth = min(5000, max(1, $0)) })
+                            .unitSuffix("px")
                     }
-                    .pickerStyle(.menu).labelsHidden().fixedSize()
-                }
-                .help("Solid, dashed or dotted; dashes grow with the line's width")
-                HStack(spacing: 6) {
-                    Text("Cap")
-                    Picker("Cap", selection: $session.shapeLineCap) {
-                        ForEach(ShapeLineCap.allCases, id: \.self) { cap in
-                            Label { Text(cap.rawValue) } icon: { Image(nsImage: LineSample.cap(cap)) }.tag(cap)
+                    HStack(spacing: 6) {
+                        Text("Style")
+                        Picker("Style", selection: $session.shapeLineStyle) {
+                            ForEach(ShapeLineStyle.allCases, id: \.self) { style in
+                                Image(nsImage: LineSample.style(style)).accessibilityLabel(style.rawValue).tag(style)
+                            }
                         }
+                        .pickerStyle(.menu).labelsHidden().fixedSize()
                     }
-                    .pickerStyle(.menu).labelsHidden().fixedSize()
+                    .help("Solid, dashed or dotted; dashes grow with the line's width")
+                    HStack(spacing: 6) {
+                        Text("Cap")
+                        Picker("Cap", selection: $session.shapeLineCap) {
+                            ForEach(ShapeLineCap.allCases, id: \.self) { cap in
+                                Label { Text(cap.rawValue) } icon: { Image(nsImage: LineSample.cap(cap)) }.tag(cap)
+                            }
+                        }
+                        .pickerStyle(.menu).labelsHidden().fixedSize()
+                    }
+                    .help("How the line's ends, and each of its dashes and dots, are finished")
                 }
-                .help("How the line's ends, and each of its dashes and dots, are finished")
-            }
-            if session.shapeKind == .rectangle {
-                HStack(spacing: 6) {
-                    Text("Radius").scrubbable(sensitivity: 1, value: $session.shapeCornerRadius, range: 0...5000)
-                    Slider(value: Binding(get: { min(200, session.shapeCornerRadius) },
-                                          set: { session.shapeCornerRadius = $0.rounded() }), in: 0...200)
-                        .frame(width: 100)
-                    TextField("Radius", value: Binding(get: { session.shapeCornerRadius },
-                                                       set: { session.shapeCornerRadius = $0.isFinite ? min(5000, max(0, $0)) : 0 }),
-                              format: .number.precision(.fractionLength(0)))
-                        .frame(width: 48).textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing)
-                        .arrowSteps(value: { Double(session.shapeCornerRadius) },
-                                    change: { session.shapeCornerRadius = min(5000, max(0, CGFloat($0))) })
-                        .unitSuffix("px")
+                if session.shapeKind == .rectangle {
+                    HStack(spacing: 6) {
+                        Text("Radius").scrubbable(sensitivity: 1, value: $session.shapeCornerRadius, range: 0...5000)
+                        Slider(value: Binding(get: { min(200, session.shapeCornerRadius) },
+                                              set: { session.shapeCornerRadius = $0.rounded() }), in: 0...200)
+                            .frame(width: 100)
+                        TextField("Radius", value: Binding(get: { session.shapeCornerRadius },
+                                                           set: { session.shapeCornerRadius = $0.isFinite ? min(5000, max(0, $0)) : 0 }),
+                                  format: .number.precision(.fractionLength(0)))
+                            .frame(width: 48).textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing)
+                            .arrowSteps(value: { Double(session.shapeCornerRadius) },
+                                        change: { session.shapeCornerRadius = min(5000, max(0, CGFloat($0))) })
+                            .unitSuffix("px")
+                    }
+                    .help("Round the rectangle's corners by this many pixels; 0 keeps them square")
+                    Toggle("Smooth Corners", isOn: $session.shapeSmoothing)
+                        .toggleStyle(.checkbox)
+                        .fixedSize()
+                        .disabled(session.shapeCornerRadius <= 0)
+                        .help(session.shapeCornerRadius <= 0
+                              ? "Set a radius above 0 to use smooth corners."
+                              : "Use smooth squircle corners at 60% smoothing, matching Figma's iOS setting")
                 }
-                .help("Round the rectangle's corners by this many pixels; 0 keeps them square")
-                Toggle("Smooth Corners", isOn: $session.shapeSmoothing)
-                    .toggleStyle(.checkbox)
-                    .fixedSize()
-                    .disabled(session.shapeCornerRadius <= 0)
-                    .help(session.shapeCornerRadius <= 0
-                          ? "Set a radius above 0 to use smooth corners."
-                          : "Use smooth squircle corners at 60% smoothing, matching Figma's iOS setting")
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
-        }
+            }
         .padding(.horizontal, 18).toolHeaderBar().releasesFocusOnCommit(session)
         .disabled(session.showsBusy || session.document == nil)
     }
 }
 
 /// Small drawings for the Line shape's menus. Template images, so a menu tints them with its text and highlight.
-@MainActor private enum LineSample {
+private enum LineSample {
     private static var images: [String: NSImage] = [:]
 
     /// A stretch of line in `style`, as it looks drawn.

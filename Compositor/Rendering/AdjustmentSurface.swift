@@ -1,6 +1,6 @@
 import CoreGraphics
 
-nonisolated enum AdjustmentSurface {
+enum AdjustmentSurface {
     static func draw(in context: CGContext, padding: CGFloat = 0, sixteenBit: Bool = false, hdr: Bool = false, body: (CGContext) -> Void) {
         // Spatial adjustments need pixels outside AppKit's dirty rectangle. Render that halo
         // offscreen; the destination context still clips the final draw to the requested region.

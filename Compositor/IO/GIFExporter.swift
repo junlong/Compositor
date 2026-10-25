@@ -3,7 +3,7 @@ import CoreGraphics
 import ImageIO
 import UniformTypeIdentifiers
 
-nonisolated struct GIFExportOptions: Equatable, Sendable {
+struct GIFExportOptions: Equatable, Sendable {
     var loopsForever = true
     var keepsTransparency = true
     var red: CGFloat = 1
@@ -11,20 +11,20 @@ nonisolated struct GIFExportOptions: Equatable, Sendable {
     var blue: CGFloat = 1
 }
 
-nonisolated enum GIFExportError: LocalizedError {
+enum GIFExportError: LocalizedError {
     case tooLarge, invalidTimeline
 
     var errorDescription: String? {
         switch self {
         case .tooLarge:
-            "Animation export supports up to \(GIFTimelineLimits.maxFrames.formatted()) frames, \(GIFExporter.pixelBudget / 1_000_000) megapixels across all exported frames, and 512 MiB of encoded data. Reduce the export size or frame count."
-        case .invalidTimeline: "The selected animation timeline is missing or invalid."
+            return "Animation export supports up to \(GIFTimelineLimits.maxFrames.formatted()) frames, \(GIFExporter.pixelBudget / 1_000_000) megapixels across all exported frames, and 512 MiB of encoded data. Reduce the export size or frame count."
+        case .invalidTimeline: return "The selected animation timeline is missing or invalid."
         }
     }
 }
 
 /// Only the encoded bytes and one decoded preview cross actors; their image is immutable.
-nonisolated struct GIFExportResult: @unchecked Sendable {
+struct GIFExportResult: @unchecked Sendable {
     let data: Data
     let preview: CGImage
     let durations: [TimeInterval]
@@ -33,7 +33,7 @@ nonisolated struct GIFExportResult: @unchecked Sendable {
 actor GIFExporter {
     static let shared = GIFExporter()
     // ImageIO may retain frames while encoding. Bound the whole sequence, as well as each raster.
-    nonisolated static let pixelBudget = DocumentLimits.maxSurfacePixels
+    static let pixelBudget = DocumentLimits.maxSurfacePixels
 
     func encode(_ snapshot: ProjectSnapshot, width: Int, height: Int, options: GIFExportOptions,
                 progress: @Sendable (Int, Int) async -> Void = { _, _ in }) async throws -> GIFExportResult {
@@ -150,7 +150,7 @@ actor GIFExporter {
 
 extension ProjectSnapshot {
     /// Timelines offered for export, excluding layers inside hidden folders.
-    nonisolated var gifExportLayers: [ProjectLayerRecord] {
+    var gifExportLayers: [ProjectLayerRecord] {
         LayerHierarchy.visibleLayers(manifest.layers).filter { animations[$0.id] != nil }
     }
 }

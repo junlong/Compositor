@@ -3,7 +3,7 @@ import CoreImage
 
 /// Shared plumbing for whole-image adjustments: unmanaged Core Image rendering, selection
 /// coverage on an image's own pixel grid, and blending a result back through a selection.
-nonisolated enum PixelAdjust {
+enum PixelAdjust {
     /// No color management: pixel values pass through unchanged.
     static let ciContext = CIContext(options: [.workingColorSpace: NSNull(), .outputColorSpace: NSNull()])
 

@@ -6,7 +6,7 @@ import Metal
 /// hexagon of blades, an anamorphic oval, or a cat's eye clipped toward the frame's edges — more of it at the rim when
 /// Ring asks. It works in half floats, so lights brighter than white keep their brightness through the blur. A big
 /// blur runs on a smaller copy, which it hides, so its cost stays the same however wide the discs.
-nonisolated final class MetalBokeh: @unchecked Sendable {
+final class MetalBokeh: @unchecked Sendable {
     static let shared: MetalBokeh? = try? MetalBokeh()
     /// The widest disc radius gathered at full size, in pixels.
     static let largestRadius: CGFloat = 20

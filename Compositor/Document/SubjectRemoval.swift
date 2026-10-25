@@ -2,10 +2,15 @@ import AppKit
 import Vision
 import CoreImage
 
-nonisolated enum SubjectRemoval {
+enum SubjectRemoval {
     enum Failure: LocalizedError {
-        case noSubject
-        var errorDescription: String? { "No foreground subject was detected in this layer. Try an image with a more distinct subject." }
+        case noSubject, render
+        var errorDescription: String? {
+            switch self {
+            case .noSubject: return "No foreground subject was detected in this layer. Try an image with a more distinct subject."
+            case .render: return "The subject mask could not be rendered."
+            }
+        }
     }
     /// Vision's own mask for an image, kept while the panel is open so moving a slider only redoes the refining.
     private static let cache = MaskCache()
@@ -29,12 +34,52 @@ nonisolated enum SubjectRemoval {
     private static func vision(_ image: CGImage) throws -> CGImage {
         try cache.mask(for: image) {
             let handler = VNImageRequestHandler(cgImage: image, orientation: .up)
-            let request = VNGenerateForegroundInstanceMaskRequest()
+            // Foreground instance matting arrived with macOS 14. Attention saliency gives the subject's outline on
+            // this system, which the panel's Refine, Contrast and Shift Edge controls tidy up the same way.
+            let request = VNGenerateAttentionBasedSaliencyImageRequest()
             try handler.perform([request])
-            guard let result = request.results?.first, !result.allInstances.isEmpty else { throw Failure.noSubject }
-            let buffer = try result.generateScaledMaskForImage(forInstances: result.allInstances, from: handler)
-            return try PixelAdjust.render(CIImage(cvPixelBuffer: buffer), width: image.width, height: image.height, isMask: true)
+            guard let result = request.results?.first else { throw Failure.noSubject }
+            let buffer = result.pixelBuffer
+            let maskWidth = CVPixelBufferGetWidth(buffer), maskHeight = CVPixelBufferGetHeight(buffer)
+            guard maskWidth > 0, maskHeight > 0 else { throw Failure.noSubject }
+            let bytes = try grayscaleBytes(from: buffer, width: maskWidth, height: maskHeight)
+            // Saliency is dim on a quiet picture: with no usable range, say so rather than hide the whole layer.
+            guard let low = bytes.min(), let high = bytes.max(),
+                  Int(high) >= 24, Int(high) - Int(low) >= 12 else { throw Failure.noSubject }
+            // Stretch the map to full contrast, so the most salient part reads as the subject.
+            let span = max(1, Int(high) - Int(low))
+            var normalized = [UInt8](repeating: 0, count: bytes.count)
+            for index in bytes.indices {
+                let scaled = (Int(bytes[index]) - Int(low)) * 255 / span
+                normalized[index] = UInt8(min(255, max(0, scaled)))
+            }
+            guard let coarse = grayImage(normalized, width: maskWidth, height: maskHeight) else { throw Failure.render }
+            return try PixelAdjust.render(CIImage(cgImage: coarse), width: image.width, height: image.height, isMask: true)
         }
+    }
+
+    private static func grayscaleBytes(from buffer: CVPixelBuffer, width: Int, height: Int) throws -> [UInt8] {
+        let context = try BrushRaster.context(width: width, height: height, mask: true)
+        let ciImage = CIImage(cvPixelBuffer: buffer)
+        let renderer = CIContext(options: [.workingColorSpace: NSNull(), .outputColorSpace: NSNull()])
+        guard let rendered = renderer.createCGImage(ciImage, from: ciImage.extent) else { throw Failure.render }
+        context.interpolationQuality = .none
+        context.setBlendMode(.copy)
+        context.draw(rendered, in: CGRect(x: 0, y: 0, width: width, height: height))
+        guard let data = context.data else { throw Failure.render }
+        let source = data.assumingMemoryBound(to: UInt8.self)
+        var bytes = [UInt8](repeating: 0, count: width * height)
+        for y in 0..<height {
+            for x in 0..<width { bytes[y * width + x] = source[y * context.bytesPerRow + x] }
+        }
+        return bytes
+    }
+
+    private static func grayImage(_ bytes: [UInt8], width: Int, height: Int) -> CGImage? {
+        guard width > 0, height > 0, let provider = CGDataProvider(data: Data(bytes) as CFData) else { return nil }
+        return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 8, bytesPerRow: width,
+                       space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
+                       provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
     }
 
     /// The panel's three controls, in the order they help:
